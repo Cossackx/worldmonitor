@@ -496,6 +496,7 @@ function sebufApiPlugin(): Plugin {
       leadsServerMod, leadsHandlerMod,
       scenarioServerMod, scenarioHandlerMod,
       shippingV2ServerMod, shippingV2HandlerMod,
+      forecastServerMod, forecastHandlerMod,
     ] = await Promise.all([
         import('./server/router'),
         import('./server/cors'),
@@ -552,6 +553,8 @@ function sebufApiPlugin(): Plugin {
         import('./server/worldmonitor/scenario/v1/handler'),
         import('./src/generated/server/worldmonitor/shipping/v2/service_server'),
         import('./server/worldmonitor/shipping/v2/handler'),
+        import('./src/generated/server/worldmonitor/forecast/v1/service_server'),
+        import('./server/worldmonitor/forecast/v1/handler'),
       ]);
 
     const serverOptions = {
@@ -585,6 +588,7 @@ function sebufApiPlugin(): Plugin {
       ...leadsServerMod.createLeadsServiceRoutes(leadsHandlerMod.leadsHandler, serverOptions),
       ...scenarioServerMod.createScenarioServiceRoutes(scenarioHandlerMod.scenarioHandler, serverOptions),
       ...shippingV2ServerMod.createShippingV2ServiceRoutes(shippingV2HandlerMod.shippingV2Handler, serverOptions),
+      ...forecastServerMod.createForecastServiceRoutes(forecastHandlerMod.forecastHandler, serverOptions),
     ];
     cachedCorsMod = corsMod;
     return routerMod.createRouter(allRoutes);
@@ -611,6 +615,23 @@ function sebufApiPlugin(): Plugin {
         '/api/supply-chain/v1/country-products': '/api/supply-chain/v1/get-country-products',
         '/api/supply-chain/v1/multi-sector-cost-shock': '/api/supply-chain/v1/get-multi-sector-cost-shock',
       };
+
+      // Vite dev has no file-based routing for api/*.js, so `/api/bootstrap` would
+      // otherwise be served as the edge function's JavaScript SOURCE with a 200,
+      // which the client's hydration parser then rejects and every bootstrap-fed
+      // panel (correlations, forecasts) reports an error instead of a miss. Answer
+      // with the same clean-miss envelope the hosted function returns when a key is
+      // absent from the seeder cache: every caller then takes its live RPC path.
+      server.middlewares.use((req, res, next) => {
+        if (!req.url || !/^\/api\/bootstrap(?:\?|$)/.test(req.url)) return next();
+        const url = new URL(req.url, 'http://localhost');
+        const keys = (url.searchParams.get('keys') ?? '').split(',').map((k) => k.trim()).filter(Boolean);
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        res.setHeader('Cache-Control', 'no-store');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.end(JSON.stringify({ data: {}, missing: keys }));
+      });
 
       server.middlewares.use(async (req, res, next) => {
         // Intercept sebuf routes in two forms:

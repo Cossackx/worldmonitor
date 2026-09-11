@@ -81,6 +81,7 @@ export class CorrelationPanel extends Panel {
   }
 
   override destroy(): void {
+    if (this.engineFallbackTimer) { clearTimeout(this.engineFallbackTimer); this.engineFallbackTimer = null; }
     this.correlationDestroyed = true;
     document.removeEventListener('wm:correlation-updated', this.boundUpdateHandler);
     super.destroy();
@@ -107,8 +108,24 @@ export class CorrelationPanel extends Panel {
         this.requestRender();
         return;
       }
-      this.showError(t('common.failedToLoad'), () => this.loadBootstrapCards());
+      // A bootstrap miss is not a failure: the in-page correlation engine
+      // publishes cards for this domain via updateCards() once it has run
+      // (App.runCorrelationEngine). Bootstrap only exists to paint sooner from
+      // the hosted seeder cache. Keep the loading state briefly, then settle to
+      // the engine's empty state rather than an error with a retry button.
+      this.armEngineFallback();
     });
+  }
+
+  private engineFallbackTimer: ReturnType<typeof setTimeout> | null = null;
+  private armEngineFallback(): void {
+    if (this.engineFallbackTimer) return;
+    this.engineFallbackTimer = setTimeout(() => {
+      this.engineFallbackTimer = null;
+      if (this.correlationDestroyed || this.hasLiveData) return;
+      this.cards = [];
+      this.requestRender();
+    }, 15_000);
   }
 
   private pendingRender = false;
