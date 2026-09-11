@@ -13,6 +13,7 @@ import type {
 import { getCachedJsonBatch } from '../../../_shared/redis';
 import { toUniqueSortedLimited } from '../../../_shared/normalize-list';
 import { applyFredObservationLimit, fredSeedKey, normalizeFredLimit } from './_fred-shared';
+import { fetchLocalFredSeries } from './_local-fred';
 
 const ALLOWED_SERIES = new Set<string>([
   'WALCL', 'FEDFUNDS', 'T10Y2Y', 'UNRATE', 'CPIAUCSL', 'DGS10', 'VIXCLS',
@@ -42,6 +43,17 @@ export async function getFredSeriesBatch(
     for (const id of limitedList) {
       const cached = cachedByKey.get(keysById.get(id)!) as { series?: FredSeries } | undefined;
       if (cached?.series) results[id] = applyFredObservationLimit(cached.series, limit);
+    }
+
+    // Private local preview only (null otherwise): fill seed misses from the
+    // keyless fredgraph export. See ./_local-fred.ts.
+    const missing = limitedList.filter((id) => !results[id]);
+    const local = missing.length > 0 ? await fetchLocalFredSeries(missing) : null;
+    if (local) {
+      for (const id of missing) {
+        const series = local.get(id);
+        if (series) results[id] = applyFredObservationLimit(series, limit);
+      }
     }
 
     return {

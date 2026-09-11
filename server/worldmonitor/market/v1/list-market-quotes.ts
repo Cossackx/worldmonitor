@@ -41,6 +41,8 @@ import {
   type ProviderQuote,
 } from './_quote-provider';
 import { CachedFetchTimeoutError, cachedFetchJson, readCachedJson } from '../../../_shared/redis';
+import { fetchLocalYahooQuotes } from './_local-yahoo-quotes';
+import stocksConfig from '../../../../shared/stocks.json';
 
 const BOOTSTRAP_KEY = 'market:stocks-bootstrap:v1';
 
@@ -372,6 +374,41 @@ function withQuoteAsOf(
   return { ...response, asOf: asOf ?? '' };
 }
 
+/**
+ * Private local preview recovery for a seed MISS (never for a seed read
+ * error, which keeps its fail-closed hosted semantics). The preview launcher
+ * runs no Redis and no seeder, so without this the default universe is
+ * permanently SEED_UNAVAILABLE. Answers from the keyless Yahoo spark batch
+ * (see ./_local-yahoo-quotes.ts); returns null when the flag is absent or
+ * Yahoo produced nothing, so the caller falls through to the hosted response.
+ */
+async function listLocalPreviewMarketQuotes(
+  accepted: string[],
+  dropped: string[],
+): Promise<ListMarketQuotesResponse | null> {
+  const symbols = accepted.length > 0 ? accepted : stocksConfig.defaultSymbols;
+  const resolved = await fetchLocalYahooQuotes(symbols);
+  if (!resolved || resolved.size === 0) return null;
+
+  const quotes: MarketQuote[] = [];
+  const unavailable: MarketQuoteUnavailable[] = [];
+  for (const symbol of symbols) {
+    const quote = resolved.get(symbol);
+    if (quote) quotes.push(quote);
+    else unavailable.push({ symbol, reason: REASON.notFound });
+  }
+  for (const symbol of dropped) unavailable.push({ symbol, reason: REASON.requestLimit });
+
+  return {
+    quotes,
+    finnhubSkipped: false,
+    skipReason: '',
+    rateLimited: false,
+    unavailableSymbols: unavailable,
+    asOf: new Date().toISOString(),
+  };
+}
+
 export async function listMarketQuotes(
   _ctx: ServerContext,
   req: ListMarketQuotesRequest,
@@ -392,6 +429,8 @@ export async function listMarketQuotes(
   // empty response instead of throwing. Validate the shape to keep that
   // fail-soft behaviour without the catch-all that also hid real bugs.
   if (!Array.isArray(bootstrap?.quotes) || bootstrap.quotes.length === 0) {
+    const local = await listLocalPreviewMarketQuotes(accepted, dropped);
+    if (local) return local;
     return seedUnavailableResponse([...accepted, ...dropped]);
   }
 

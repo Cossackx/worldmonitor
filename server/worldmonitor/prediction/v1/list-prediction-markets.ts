@@ -16,6 +16,7 @@ import {
 import filterParamContracts from '../../../../shared/openapi-filter-param-contracts.json';
 import { clampInt } from '../../../_shared/constants';
 import { getCachedJson } from '../../../_shared/redis';
+import { fetchLocalPolymarketBootstrap } from './_local-polymarket';
 
 const BOOTSTRAP_KEY = 'prediction:markets-bootstrap:v1';
 const COUNTRY_INDEX_KEY = 'prediction:markets-country-index:v1';
@@ -125,7 +126,10 @@ export const listPredictionMarkets: PredictionServiceHandler['listPredictionMark
       return { markets: [], pagination: undefined, fetchedAt: 0, dataAvailable: false };
     }
 
-    const bootstrap = await getCachedJson(BOOTSTRAP_KEY) as BootstrapData | null;
+    // Private local preview only (null otherwise): a seed miss is answered
+    // from keyless Polymarket Gamma. See ./_local-polymarket.ts.
+    const bootstrap = (await getCachedJson(BOOTSTRAP_KEY) as BootstrapData | null)
+      ?? await fetchLocalPolymarketBootstrap();
     if (!bootstrap) return { markets: [], pagination: undefined, fetchedAt: 0, dataAvailable: false };
 
     const fetchedAt = Number(bootstrap.fetchedAt ?? 0);

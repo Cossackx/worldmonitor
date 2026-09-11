@@ -11,6 +11,7 @@ import type {
 
 import { getCachedJson } from '../../../_shared/redis';
 import { applyFredObservationLimit, fredSeedKey, normalizeFredLimit } from './_fred-shared';
+import { fetchLocalFredSeries } from './_local-fred';
 
 export async function getFredSeries(
   _ctx: ServerContext,
@@ -20,8 +21,14 @@ export async function getFredSeries(
   try {
     const seedKey = fredSeedKey(req.seriesId);
     const result = await getCachedJson(seedKey, true) as GetFredSeriesResponse | null;
-    if (!result?.series) return { series: undefined };
     const limit = normalizeFredLimit(req.limit);
+    if (!result?.series) {
+      // Private local preview only (null otherwise): keyless fredgraph
+      // export for a seed miss. See ./_local-fred.ts.
+      const local = await fetchLocalFredSeries([req.seriesId]);
+      const series = local?.get(req.seriesId.trim().toUpperCase());
+      return { series: series ? applyFredObservationLimit(series, limit) : undefined };
+    }
     return { series: applyFredObservationLimit(result.series, limit) };
   } catch {
     return { series: undefined };

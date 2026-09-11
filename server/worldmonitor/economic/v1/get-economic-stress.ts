@@ -5,6 +5,7 @@ import type {
   EconomicStressComponent,
 } from '../../../../src/generated/server/worldmonitor/economic/v1/service_server';
 import { getCachedJson } from '../../../_shared/redis';
+import { computeLocalPreviewStressIndex } from './_local-fred';
 
 const SEED_CACHE_KEY = 'economic:stress-index:v1';
 
@@ -24,7 +25,12 @@ export async function getEconomicStress(
 ): Promise<GetEconomicStressResponse> {
   try {
     const raw = await getCachedJson(SEED_CACHE_KEY, true) as Record<string, unknown> | null;
-    if (!raw || raw.unavailable) return buildFallbackResult();
+    if (!raw || raw.unavailable) {
+      // Private local preview only (null otherwise): compute the seeder's
+      // composite from keyless FRED exports. See ./_local-fred.ts.
+      const local = await computeLocalPreviewStressIndex();
+      return local ?? buildFallbackResult();
+    }
 
     const components = (Array.isArray(raw.components) ? raw.components : []).map(
       (c: Record<string, unknown>): EconomicStressComponent => {

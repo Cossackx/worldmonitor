@@ -19,6 +19,7 @@ import type {
 import { ValidationError } from '../../../../src/generated/server/worldmonitor/market/v1/service_server';
 import { parseStringArray } from './_shared';
 import { getCachedJson } from '../../../_shared/redis';
+import { fetchLocalYahooQuotes } from './_local-yahoo-quotes';
 import commodityConfig from '../../../../shared/commodities.json';
 
 const BOOTSTRAP_KEY = 'market:commodities-bootstrap:v1';
@@ -115,9 +116,34 @@ export async function listCommodityQuotes(
 
   try {
     const bootstrap = await getCachedJson(BOOTSTRAP_KEY, true) as ListCommodityQuotesResponse | null;
-    if (!bootstrap?.quotes?.length) return { quotes: [] };
+    if (!bootstrap?.quotes?.length) {
+      const local = await listLocalPreviewCommodityQuotes(symbols);
+      return local ?? { quotes: [] };
+    }
     return { quotes: filterCommoditySeed(bootstrap.quotes, symbols) };
   } catch {
     return { quotes: [] };
   }
+}
+
+/**
+ * Private local preview recovery for a seed miss (VITE_PRIVATE_WORKSPACE=1
+ * only; see ./_local-yahoo-quotes.ts). The preview launcher runs no seeder,
+ * so the Metals & Materials and Energy Complex tapes would otherwise never
+ * populate. Answers the requested (or, for an empty request, the full
+ * configured) commodity set from the keyless Yahoo spark batch, in configured
+ * order with the configured name/display, exactly as the seed would. Returns
+ * null when the flag is absent or Yahoo produced nothing.
+ */
+async function listLocalPreviewCommodityQuotes(symbols: string[]): Promise<ListCommodityQuotesResponse | null> {
+  const wanted = symbols.length > 0 ? new Set(symbols) : SUPPORTED_COMMODITY_SYMBOLS;
+  const configured = commodityConfig.commodities.filter((c) => wanted.has(c.symbol));
+  const resolved = await fetchLocalYahooQuotes(configured.map((c) => c.symbol));
+  if (!resolved || resolved.size === 0) return null;
+  const quotes: CommodityQuote[] = [];
+  for (const c of configured) {
+    const quote = resolved.get(c.symbol);
+    if (quote) quotes.push({ ...quote, name: c.name, display: c.display });
+  }
+  return { quotes };
 }
