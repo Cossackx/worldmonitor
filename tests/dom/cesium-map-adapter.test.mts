@@ -74,9 +74,10 @@ function fakeCesium(options: { esriFails?: boolean; terrainFails?: boolean } = {
     ScreenSpaceEventType: { LEFT_CLICK: 'left', RIGHT_CLICK: 'right' },
     PolygonHierarchy: class { constructor(public positions: unknown[], public holes: unknown[] = []) {} },
     ClassificationType: { TERRAIN: 'terrain' },
-    VerticalOrigin: { BOTTOM: 'bottom' },
+    VerticalOrigin: { BOTTOM: 'bottom', CENTER: 'center' },
+    HorizontalOrigin: { CENTER: 'center' },
     LabelStyle: { FILL_AND_OUTLINE: 'fill-outline' },
-    HeightReference: { CLAMP_TO_GROUND: 'clamp' },
+    HeightReference: { CLAMP_TO_GROUND: 'clamp', NONE: 'none' },
     EllipsoidTerrainProvider: class {},
     OpenStreetMapImageryProvider: class {
       kind = 'osm';
@@ -319,14 +320,14 @@ describe('CesiumMapAdapter spike', () => {
     expect(adapter.getLayerStatus('natural')).toBe('unsupported');
 
     await adapter.whenReady();
-    expect(fake.entities.has('natural:queued')).toBe(true);
+    expect(fake.entities.has('m:natural:queued')).toBe(true);
     expect(adapter.getLayerStatus('natural')).toBe('rendered');
 
     adapter.setLayers({ ...state().layers, natural: false } as MapLayers);
-    expect(fake.entities.has('natural:queued')).toBe(false);
+    expect(fake.entities.has('m:natural:queued')).toBe(false);
     expect(adapter.getLayerStatus('natural')).toBe('unsupported');
     adapter.setLayers({ ...state().layers, natural: true } as MapLayers);
-    expect(fake.entities.has('natural:queued')).toBe(true);
+    expect(fake.entities.has('m:natural:queued')).toBe(true);
   });
 
   it('reads the live Cesium camera after user movement', async () => {
@@ -359,7 +360,7 @@ describe('CesiumMapAdapter spike', () => {
     adapter.setOnCountryClick(onCountryClick);
     await adapter.whenReady();
     adapter.setNaturalEvents([{ id: 'point', title: 'Point', category: 'earthquakes', categoryTitle: 'Other', lat: 1, lon: 2, date: new Date(), closed: false }]);
-    fake.viewer.scene.pick = vi.fn(() => ({ id: { id: 'natural:point' } }));
+    fake.viewer.scene.pick = vi.fn(() => ({ id: { id: 'm:natural:point' } }));
 
     const leftClick = fake.handler.setInputAction.mock.calls.find(([, type]) => type === 'left')?.[0] as ((movement: { position: { x: number; y: number } }) => void);
     leftClick({ position: { x: 10, y: 20 } });
@@ -402,8 +403,8 @@ describe('CesiumMapAdapter spike', () => {
     adapter.setNaturalEvents([{ id: 'old', title: 'Old', category: 'earthquakes', categoryTitle: 'Other', lat: 1, lon: 2, date: new Date(), closed: false }]);
     adapter.setNaturalEvents([{ id: 'new', title: 'New', category: 'earthquakes', categoryTitle: 'Other', lat: 3, lon: 4, date: new Date(), closed: false }]);
 
-    expect([...fake.entities.keys()]).toContain('natural:new');
-    expect([...fake.entities.keys()]).not.toContain('natural:old');
+    expect([...fake.entities.keys()]).toContain('m:natural:new');
+    expect([...fake.entities.keys()]).not.toContain('m:natural:old');
     expect(CESIUM_SPIKE_LIMITATIONS.unsupportedLayers).toMatch('state');
     expect(adapter.getLayerStatus('natural')).toBe('rendered');
     expect(adapter.getLayerStatus('conflicts')).toBe('unsupported');
@@ -528,6 +529,160 @@ describe('CesiumMapAdapter spike', () => {
       expect(highlight.polyline.clampToGround).toBe(true);
       adapter.clearCountryHighlight();
       expect(fake.entities.has('country-highlight:IR:0')).toBe(false);
+    });
+  });
+
+  describe('layer parity with GlobeMap', () => {
+    const popup = () => ({ show: vi.fn(), loadConflictHistory: vi.fn(), loadWingbitsLiveFlight: vi.fn(), setChokepointData: vi.fn(), hide: vi.fn() });
+    function build(fake: ReturnType<typeof fakeCesium>, layers: Partial<MapLayers>) {
+      const p = popup();
+      const adapter = new CesiumMapAdapter(document.createElement('div'), { ...state(), layers: { ...state().layers, ...layers } as MapLayers }, {
+        chrome: false, onInitError: vi.fn(), cesium: fake.dependency, createViewer: () => fake.viewer, loadCountries: async () => null, createPopup: () => p,
+      });
+      return { adapter, popup: p };
+    }
+    const entity = (fake: ReturnType<typeof fakeCesium>, id: string) => fake.entities.get(id) as Record<string, any> | undefined;
+
+    it('renders hotspots as escalation-coloured glyphs and routes clicks to the hotspot callback', async () => {
+      const fake = fakeCesium();
+      const { adapter } = build(fake, { hotspots: true });
+      const onHotspot = vi.fn();
+      adapter.setOnHotspotClick(onHotspot);
+      await adapter.whenReady();
+      // The dashboard never pushes hotspots; the renderer seeds the bundled set itself.
+      expect([...fake.entities.keys()].filter((id) => id.startsWith('m:hotspots:')).length).toBeGreaterThan(0);
+      expect(adapter.getLayerStatus('hotspots')).toBe('rendered');
+      adapter.setHotspots([{ id: 'h1', name: 'Taiwan Strait', lat: 24, lon: 120, keywords: [], escalationScore: 5 } as any]);
+      expect([...fake.entities.keys()].filter((id) => id.startsWith('m:hotspots:'))).toEqual(['m:hotspots:h1']);
+
+      const e = entity(fake, 'm:hotspots:h1');
+      expect(e?.label).toMatchObject({ text: '◆', fillColor: 'css(#ff2020)', heightReference: 'clamp' });
+      expect(adapter.getLayerStatus('hotspots')).toBe('rendered');
+
+      fake.viewer.scene.pick = vi.fn(() => ({ id: { id: 'm:hotspots:h1' } }));
+      const leftClick = fake.handler.setInputAction.mock.calls.find(([, type]) => type === 'left')?.[0] as ((movement: { position: { x: number; y: number } }) => void);
+      leftClick({ position: { x: 1, y: 2 } });
+      expect(onHotspot).toHaveBeenCalledWith(expect.objectContaining({ id: 'h1', escalationScore: 5 }));
+    });
+
+    it('opens the shared popup for flights, vessels and clusters, and a tooltip for everything else', async () => {
+      const fake = fakeCesium();
+      const container = document.createElement('div');
+      const p = popup();
+      const adapter = new CesiumMapAdapter(container, { ...state(), layers: { ...state().layers, military: true, fires: true } as MapLayers }, {
+        chrome: false, onInitError: vi.fn(), cesium: fake.dependency, createViewer: () => fake.viewer, loadCountries: async () => null, createPopup: () => p,
+      });
+      await adapter.whenReady();
+      adapter.setMilitaryFlights([{ id: 'f1', callsign: 'RCH123', lat: 50, lon: 10, aircraftType: 'transport', hexCode: 'abc' } as any]);
+      adapter.setMilitaryVessels([{ id: 'v1', name: 'USS Ford', lat: 36, lon: 15, vesselType: 'carrier' } as any], [{ id: 'c1', name: 'CSG', lat: 30, lon: 20, vesselCount: 4, activityType: 'deployment' } as any]);
+      adapter.setFires([{ lat: -20, lon: 130, brightness: 420, region: 'Outback' }]);
+
+      expect(entity(fake, 'm:flights:f1')?.label).toMatchObject({ text: '✈', fillColor: 'css(#aaaaff)' });
+      expect(entity(fake, 'm:vessels:v1')?.label).toMatchObject({ text: '⛴', font: '15px sans-serif' });
+      expect(entity(fake, 'm:vesselClusters:c1')?.label).toMatchObject({ text: '4', fillColor: 'css(#ff4444)' });
+      expect(adapter.getLayerStatus('military')).toBe('rendered');
+      expect(adapter.getLayerStatus('fires')).toBe('rendered');
+
+      const leftClick = fake.handler.setInputAction.mock.calls.find(([, type]) => type === 'left')?.[0] as ((movement: { position: { x: number; y: number } }) => void);
+      fake.viewer.scene.pick = vi.fn(() => ({ id: { id: 'm:flights:f1' } }));
+      leftClick({ position: { x: 1, y: 2 } });
+      expect(p.show).toHaveBeenLastCalledWith(expect.objectContaining({ type: 'militaryFlight', data: expect.objectContaining({ id: 'f1' }) }));
+      expect(p.loadWingbitsLiveFlight).toHaveBeenCalledWith('abc');
+      fake.viewer.scene.pick = vi.fn(() => ({ id: { id: 'm:vesselClusters:c1' } }));
+      leftClick({ position: { x: 1, y: 2 } });
+      expect(p.show).toHaveBeenLastCalledWith(expect.objectContaining({ type: 'militaryVesselCluster' }));
+
+      fake.viewer.scene.pick = vi.fn(() => ({ id: { id: 'm:fires:-20,130' } }));
+      leftClick({ position: { x: 40, y: 50 } });
+      expect(container.querySelector('.cesium-marker-tooltip')?.textContent).toBe('Fire — Outback');
+      // A bare-globe click clears the tooltip.
+      fake.viewer.scene.pick = vi.fn(() => undefined);
+      leftClick({ position: { x: 40, y: 50 } });
+      expect(container.querySelector('.cesium-marker-tooltip')).toBeNull();
+    });
+
+    it('draws bundled static layers, cables and pipelines only while their toggles are on', async () => {
+      const fake = fakeCesium();
+      const { adapter } = build(fake, { nuclear: false, cables: false, pipelines: false });
+      await adapter.whenReady();
+      expect(adapter.getLayerStatus('nuclear')).toBe('unsupported');
+      expect([...fake.entities.keys()].some((id) => id.startsWith('m:static:nuclear:'))).toBe(false);
+
+      adapter.setLayers({ ...state().layers, nuclear: true, cables: true, pipelines: true } as MapLayers);
+      const nuclear = [...fake.entities.keys()].filter((id) => id.startsWith('m:static:nuclear:'));
+      expect(nuclear.length).toBeGreaterThan(0);
+      expect(entity(fake, nuclear[0]!)?.label).toMatchObject({ text: '☢', fillColor: 'css(#ffd700)' });
+      const cables = [...fake.entities.keys()].filter((id) => id.startsWith('p:cables:'));
+      const pipelines = [...fake.entities.keys()].filter((id) => id.startsWith('p:pipelines:'));
+      expect(cables.length).toBeGreaterThan(0);
+      expect(pipelines.length).toBeGreaterThan(0);
+      expect(entity(fake, cables[0]!)?.polyline).toMatchObject({ clampToGround: true, material: 'css(rgba(0,200,255,0.65))' });
+      expect(adapter.getLayerStatus('cables')).toBe('rendered');
+      expect(adapter.getLayerStatus('pipelines')).toBe('rendered');
+
+      adapter.setLayers({ ...state().layers, nuclear: false, cables: false, pipelines: true } as MapLayers);
+      expect([...fake.entities.keys()].some((id) => id.startsWith('m:static:nuclear:'))).toBe(false);
+      expect([...fake.entities.keys()].some((id) => id.startsWith('p:cables:'))).toBe(false);
+      expect([...fake.entities.keys()].some((id) => id.startsWith('p:pipelines:'))).toBe(true);
+    });
+
+    it('recolours a cable when an advisory reports a fault on it', async () => {
+      const fake = fakeCesium();
+      const { adapter } = build(fake, { cables: true });
+      await adapter.whenReady();
+      const first = [...fake.entities.keys()].find((id) => id.startsWith('p:cables:'))!;
+      const cableId = first.slice('p:cables:'.length);
+      adapter.setCableActivity([{ id: 'adv1', cableId, title: 'Cut', severity: 'fault', lat: 1, lon: 2 } as any], []);
+      expect(entity(fake, first)?.polyline.material).toBe('css(#ff3030)');
+      expect(entity(fake, 'm:cableAdvisories:adv1')?.label).toMatchObject({ text: '🔌', fillColor: 'css(#ff2020)' });
+    });
+
+    it('places satellites at orbital altitude with unclamped trails, and drapes CII choropleth on countries', async () => {
+      const fake = fakeCesium();
+      const countries = { type: 'FeatureCollection', features: [{ type: 'Feature', properties: { 'ISO3166-1-Alpha-2': 'IR' }, geometry: { type: 'Polygon', coordinates: [[[44, 25], [63, 25], [63, 40], [44, 40], [44, 25]]] } }] } as any;
+      const p = popup();
+      const adapter = new CesiumMapAdapter(document.createElement('div'), { ...state(), layers: { ...state().layers, satellites: true, ciiChoropleth: true } as MapLayers }, {
+        chrome: false, onInitError: vi.fn(), cesium: fake.dependency, createViewer: () => fake.viewer, loadCountries: async () => countries, createPopup: () => p,
+      });
+      await adapter.whenReady();
+      await adapter.whenCountriesSettled();
+      adapter.setSatellites([{ noradId: '25544', name: 'ISS', lat: 10, lng: 20, alt: 420, country: 'US', type: 'station', velocity: 7.6, inclination: 51.6, trail: [[21, 11, 420], [22, 12, 420]] } as any]);
+      const sat = entity(fake, 'm:satellites:25544');
+      expect(sat?.position).toEqual({ lon: 20, lat: 10, height: 420_000 });
+      expect(sat?.point).toMatchObject({ heightReference: 'none', color: 'css(#4488ff)' });
+      const orbit = entity(fake, 'p:orbits:orbit-25544');
+      expect(orbit?.polyline.clampToGround).toBe(false);
+      expect(orbit?.polyline.positions).toHaveLength(3);
+      expect(adapter.getLayerStatus('satellites')).toBe('rendered');
+
+      adapter.setCIIScores([{ code: 'IR', score: 82, level: 'critical' }]);
+      const cii = entity(fake, 'poly:cii:IR:0');
+      expect(cii?.polygon).toMatchObject({ material: 'css(rgba(140, 10, 0, 0.50))', classificationType: 'terrain' });
+      expect(adapter.getLayerStatus('ciiChoropleth')).toBe('rendered');
+      adapter.setLayers({ ...state().layers, satellites: true, ciiChoropleth: false } as MapLayers);
+      expect(fake.entities.has('poly:cii:IR:0')).toBe(false);
+    });
+
+    it('applies the shared marker budget so an oversized feed is truncated, not dropped', async () => {
+      const fake = fakeCesium();
+      const { adapter } = build(fake, { fires: true });
+      await adapter.whenReady();
+      adapter.setFires(Array.from({ length: 900 }, (_, i) => ({ id: `f${i}`, lat: (i % 90) - 45, lon: (i % 180) - 90, brightness: 300 + (i % 200), region: `r${i}` })));
+      const rendered = [...fake.entities.keys()].filter((id) => id.startsWith('m:fires:')).length;
+      expect(rendered).toBeGreaterThan(0);
+      expect(rendered).toBeLessThan(900);
+      const load = adapter.getMarkerLoad();
+      expect(load.rendered).toBe(rendered);
+      expect(Object.keys(load.truncated)).toContain('fires');
+    });
+
+    it('reports honest layer status for layers GlobeMap never rendered', async () => {
+      const fake = fakeCesium();
+      const { adapter } = build(fake, { sanctions: true, dayNight: true } as Partial<MapLayers>);
+      await adapter.whenReady();
+      expect(adapter.getLayerStatus('sanctions' as keyof MapLayers)).toBe('unsupported');
+      expect(adapter.getLayerStatus('dayNight' as keyof MapLayers)).toBe('unsupported');
+      expect(CESIUM_SPIKE_LIMITATIONS.renderedLayers).not.toContain('sanctions');
     });
   });
 

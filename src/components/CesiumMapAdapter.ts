@@ -14,17 +14,57 @@ import * as Cesium from 'cesium';
 import type { FeatureCollection, Geometry } from 'geojson';
 import type { MapContainerState, MapView, TimeRange } from './MapContainer';
 import type { CountryClickPayload } from './DeckGLMap';
-import type { MapLayers, NaturalEvent, SocialUnrestEvent, Hotspot, ConflictZone } from '@/types';
+import type {
+  MapLayers, NaturalEvent, SocialUnrestEvent, Hotspot, ConflictZone, MilitaryFlight, MilitaryVessel, MilitaryVesselCluster,
+  InternetOutage, CyberThreat, UcdpGeoEvent, CableAdvisory, RepairShip, AisDisruptionEvent, AisDensityZone, MilitaryBase,
+} from '@/types';
 import type { Earthquake } from '@/services/earthquakes';
 import type { WeatherAlert } from '@/services/weather';
-import { CONFLICT_ZONES } from '@/config/geo';
+import type { AirportDelayAlert } from '@/services/aviation';
+import type { IranEvent } from '@/services/conflict';
+import type { DisplacementFlow } from '@/services/displacement';
+import type { ClimateAnomaly } from '@/services/climate';
+import type { GpsJamHex } from '@/services/gps-interference';
+import type { SatellitePosition } from '@/services/satellites';
+import type { RadiationObservation } from '@/services/radiation';
+import type { ScenarioVisualState } from '@/config/scenario-templates';
+import type { GetChokepointStatusResponse } from '@/services/supply-chain';
+import type { ImageryScene } from '@/generated/server/worldmonitor/imagery/v1/service_server';
+import type { WebcamEntry, WebcamCluster } from '@/generated/client/worldmonitor/webcam/v1/service_client';
+import type { TrafficAnomaly as ProtoTrafficAnomaly, DdosLocationHit } from '@/generated/client/worldmonitor/infrastructure/v1/service_client';
+import { CONFLICT_ZONES, INTEL_HOTSPOTS, STRATEGIC_WATERWAYS } from '@/config/geo';
 import { getCountryAtCoordinates, getCountryBbox, getCountriesGeoJson } from '@/services/country-geometry';
+import { getCachedMilitaryBases, preloadMilitaryBases } from '@/services/military-base-config';
+import { GLOBE_MARKER_BUDGET_DESKTOP, GLOBE_MARKER_BUDGET_MOBILE, proximityRank, selectGlobeMarkers, type GlobeMarkerGroup } from '@/utils/globe-marker-budget';
+import { isMobileDevice } from '@/utils';
 import { CONFLICT_COUNTRY_ISO, resolveConflictZoneFeatures, type ConflictZoneFeature } from '../../shared/conflict-zone-geometry';
 import { MapPopup } from './MapPopup';
+import {
+  buildAisDisruptionMarkers, buildCableActivityMarkers, buildClimateMarkers, buildConflictZoneMarkers, buildCyberMarkers,
+  buildDdosMarkers, buildDisplacementMarkers, buildEarthquakeMarkers, buildFireMarkers, buildFlightDelayMarkers,
+  buildGpsJamMarkers, buildHotspotMarkers, buildImagerySceneMarkers, buildIranEventMarkers, buildMilitaryBaseMarkers,
+  buildMilitaryFlightMarkers, buildMilitaryVesselMarkers, buildNaturalMarkers, buildNewsLocationMarkers, buildOutageMarkers,
+  buildProtestMarkers, buildRadiationMarkers, buildSatelliteMarkers, buildStaticMarkers, buildStaticPaths,
+  buildStormPathsAndCones, buildTechEventMarkers, buildTradeRouteArcs, buildTrafficAnomalyMarkers, buildUcdpMarkers,
+  buildVesselClusterMarkers, buildWeatherMarkers, buildWebcamMarkers, CII_COLORS,
+  type CesiumMarker, type CesiumPath, type CesiumPolygon, type MarkerGroupRecord,
+} from './CesiumMarkerLayers';
+
+/**
+ * Layers this renderer draws. Parity target is GlobeMap (the globe.gl path):
+ * every layer GlobeMap renders is here. Layers GlobeMap itself never drew are
+ * listed in CesiumMarkerLayers.ts and stay honestly unsupported.
+ */
+export const CESIUM_RENDERED_LAYERS = [
+  'conflicts', 'hotspots', 'bases', 'nuclear', 'irradiators', 'spaceports', 'military', 'weather', 'natural',
+  'radiationWatch', 'economic', 'datacenters', 'waterways', 'minerals', 'flights', 'ais', 'iranAttacks', 'outages',
+  'cyberThreats', 'fires', 'protests', 'ucdpEvents', 'displacement', 'climate', 'gpsJamming', 'satellites', 'techEvents',
+  'cables', 'pipelines', 'tradeRoutes', 'webcams', 'ciiChoropleth',
+] as const satisfies readonly (keyof MapLayers)[];
 
 export const CESIUM_SPIKE_LIMITATIONS = Object.freeze({
-  renderedLayers: ['earthquakes', 'natural', 'protests', 'weather', 'flash', 'conflicts'] as const,
-  unsupportedLayers: 'All other MapLayers entries are preserved as state but have no Cesium entities.',
+  renderedLayers: [...CESIUM_RENDERED_LAYERS, 'earthquakes', 'flash'] as const,
+  unsupportedLayers: 'Layers GlobeMap never rendered (sanctions, canada*, startup/cloud/tech-HQ/finance layers, positive/kindness/happiness, speciesRecovery, renewables, resilienceScore, dayNight, mining/commodity, disease, storage, fuel, liveTankers) are preserved as state but have no Cesium entities.',
   providers: 'No imagery or terrain network is activated unless enableKeylessBasemap is explicitly true. That option uses the keyless Esri World Imagery service (attribution required) with OpenStreetMap tiles as the fallback, and keyless Re:Earth ellipsoidal terrain with a flat ellipsoid fallback. No key, token, or billable provider is ever used.',
   camera: 'Longitude/latitude/zoom are canonical; Cesium heading, pitch, and height are not round-tripped.',
 });
@@ -53,8 +93,10 @@ export type CesiumMapAdapterOptions = {
 };
 
 export interface CesiumPopup {
-  show(data: { type: 'conflict'; data: ConflictZone; x: number; y: number }): void;
+  show(data: { type: string; data: unknown; x: number; y: number }): void;
   loadConflictHistory?(conflict: ConflictZone): void;
+  loadWingbitsLiveFlight?(hexCode: string): void;
+  setChokepointData?(data: GetChokepointStatusResponse | null): void;
   hide(): void;
 }
 
@@ -74,9 +116,10 @@ export interface CesiumDependency {
   ScreenSpaceEventType: { LEFT_CLICK: unknown; RIGHT_CLICK: unknown };
   PolygonHierarchy: new (positions: unknown[], holes?: unknown[]) => unknown;
   ClassificationType: { TERRAIN: unknown };
-  VerticalOrigin: { BOTTOM: unknown };
+  VerticalOrigin: { BOTTOM: unknown; CENTER: unknown };
+  HorizontalOrigin: { CENTER: unknown };
   LabelStyle: { FILL_AND_OUTLINE: unknown };
-  HeightReference: { CLAMP_TO_GROUND: unknown };
+  HeightReference: { CLAMP_TO_GROUND: unknown; NONE: unknown };
   SceneTransforms?: { worldToWindowCoordinates(scene: unknown, position: unknown): { x: number; y: number } | undefined };
   EllipsoidTerrainProvider: new () => unknown;
   OpenStreetMapImageryProvider: new (options: { url: string; credit: string }) => CesiumImageryProvider;
@@ -147,7 +190,6 @@ const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 20;
 const MAX_CAMERA_HEIGHT = 18_000_000;
 const MIN_CAMERA_HEIGHT = 250;
-const EVENT_MARKER_HEIGHT = 25_000;
 const OSM_TILE_URL = 'https://tile.openstreetmap.org/';
 const OSM_CREDIT = '© OpenStreetMap contributors';
 // Esri World Imagery: the keyless satellite basemap God's Eye ships as its
@@ -213,7 +255,25 @@ export class CesiumMapAdapter {
   private onTimeRange: ((range: TimeRange) => void) | null = null;
   private onContextMenu: ((payload: { lat: number; lon: number; screenX: number; screenY: number; countryCode?: string; countryName?: string }) => void) | null = null;
   private removeCameraChangedListener: (() => void) | null = null;
-  private pendingPointSets = new Map<string, { points: Array<{ id: string; lat: number; lon: number }>; color: unknown }>();
+  /** Marker feeds keyed by group name; each group belongs to one layer toggle. */
+  private markerGroups = new Map<string, MarkerGroupRecord>();
+  /** Path feeds (cables, pipelines, storm tracks, orbits, trade arcs) keyed by group. */
+  private pathGroups = new Map<string, { layer: keyof MapLayers; paths: CesiumPath[] }>();
+  /** Polygon feeds (CII, scenario, imagery footprints, forecast cones) keyed by group. */
+  private polygonGroups = new Map<string, { layer: keyof MapLayers | 'scenario'; polygons: CesiumPolygon[] }>();
+  /** Entity id → marker for click routing. */
+  private markerByEntityId = new Map<string, CesiumMarker>();
+  private entityCountByLayer = new Map<string, number>();
+  private cableFaultIds = new Set<string>();
+  private cableDegradedIds = new Set<string>();
+  private ciiScores = new Map<string, { score: number; level: string }>();
+  private scenarioIso2s: string[] = [];
+  private onHotspotClick: ((hotspot: Hotspot) => void) | null = null;
+  private tooltipEl: HTMLElement | null = null;
+  private basesLoadPending = false;
+  private markerTruncation: Record<string, unknown> = {};
+  private renderedMarkerCount = 0;
+  private renderPaused = false;
   private basemapStatus: CesiumBasemapStatus;
   private basemapSource: CesiumBasemapSource | null = null;
   private basemapError: string | null = null;
@@ -284,7 +344,8 @@ export class CesiumMapAdapter {
       this.installPicking();
       this.installCameraTracking();
       this.applyCenter(this.state.pan.y, this.state.pan.x, this.state.zoom);
-      for (const [prefix, pointSet] of this.pendingPointSets) this.renderPointSet(prefix, pointSet.points, pointSet.color);
+      this.ensureStaticLayers();
+      this.flushAll();
       // Country geometry is the same local source the 2D renderers use. Not
       // awaited: the conflicts layer appears once it lands, and a load failure
       // leaves country-mapped zones absent rather than drawing a guessed border.
@@ -366,7 +427,7 @@ export class CesiumMapAdapter {
     return new this.cesium.PolygonHierarchy(this.ringToPositions(outer), holeHierarchies);
   }
 
-  private addGroundPolygon(id: string, rings: Ring[], fillCss: string, strokeCss: string, extra: Record<string, unknown> = {}): void {
+  private addGroundPolygon(id: string, rings: Ring[], fillCss: string, strokeCss: string | null, extra: Record<string, unknown> = {}): void {
     if (!this.viewer) return;
     const hierarchy = this.hierarchyFor(rings);
     const outer = rings[0];
@@ -379,6 +440,7 @@ export class CesiumMapAdapter {
       ...extra,
     });
     this.entityIds.add(id);
+    if (!strokeCss) return;
     const strokeId = `${id}:stroke`;
     this.viewer.entities.add({
       id: strokeId,
@@ -644,11 +706,15 @@ export class CesiumMapAdapter {
     }
     const pickedId = this.viewer.scene.pick?.(position)?.id?.id;
     if (pickedId) {
+      this.hideTooltip();
       const zone = this.conflictZoneForEntityId(pickedId);
       if (zone) { this.showConflictPopup(zone, position); return; }
-      // Other picked entities are data markers; their picks are not country clicks.
+      const marker = this.markerByEntityId.get(pickedId);
+      if (marker) { this.handleMarkerClick(marker, position); return; }
+      // Paths/polygons and other entities are not country clicks.
       return;
     }
+    this.hideTooltip();
     // Bare globe click: resolve the country from the same local geometry the 2D
     // renderers use, so the dashboard's country workflow works in 3D too.
     const country = (this.options.countryAt ?? getCountryAtCoordinates)(lat, lon);
@@ -710,67 +776,336 @@ export class CesiumMapAdapter {
   public setTimeRange(range: TimeRange): void { this.state = { ...this.state, timeRange: range }; this.onTimeRange?.(range); }
   public getTimeRange(): TimeRange { return this.state.timeRange; }
   public setLayers(layers: MapLayers): void {
-    const conflictsChanged = (this.state.layers.conflicts === true) !== (layers.conflicts === true);
+    const previous = this.state.layers;
     this.state = { ...this.state, layers: { ...layers } };
-    if (conflictsChanged) this.renderConflictZones();
-    for (const [prefix, layer] of Object.entries({ earthquake: 'natural', natural: 'natural', protest: 'protests', weather: 'weather' } as Record<string, keyof MapLayers>)) {
-      const ids = [...this.entityIds].filter((id) => id.startsWith(`${prefix}:`));
-      if (this.state.layers[layer] === true) {
-        const pointSet = this.pendingPointSets.get(prefix);
-        if (pointSet && ids.length === 0) this.renderPointSet(prefix, pointSet.points, pointSet.color);
-      } else {
-        for (const id of ids) { this.viewer?.entities.removeById(id); this.entityIds.delete(id); }
-      }
-    }
-    this.viewer?.scene.requestRender?.();
+    const changed = (Object.keys({ ...previous, ...layers }) as (keyof MapLayers)[]).filter((k) => (previous[k] === true) !== (layers[k] === true));
+    if (changed.length === 0) return;
+    if (changed.includes('conflicts')) this.renderConflictZones();
+    this.ensureStaticLayers();
+    this.flushAll();
+  }
+
+  public enableLayer(layer: keyof MapLayers): void {
+    if (this.state.layers[layer] === true) return;
+    this.setLayers({ ...this.state.layers, [layer]: true });
   }
 
   public onStateChanged(callback: (state: MapContainerState) => void): void { this.onState = callback; }
   public onTimeRangeChanged(callback: (range: TimeRange) => void): void { this.onTimeRange = callback; }
-  public setOnLayerChange(_callback: (layer: keyof MapLayers, enabled: boolean, source: 'user' | 'programmatic') => void): void { /* No interactive layer toggles in this spike. */ }
+  public setOnLayerChange(_callback: (layer: keyof MapLayers, enabled: boolean, source: 'user' | 'programmatic') => void): void { /* Layer toggles live in the dashboard chrome, not on the globe. */ }
   public setOnMapContextMenu(callback: (payload: { lat: number; lon: number; screenX: number; screenY: number; countryCode?: string; countryName?: string }) => void): void { this.onContextMenu = callback; }
-  public setOnHotspotClick(_callback: (hotspot: Hotspot) => void): void { /* Hotspot data is unsupported in this spike. */ }
-  public setOnAircraftPositionsUpdate(_callback: (positions: never[]) => void): void { /* Aircraft data is unsupported in this spike. */ }
+  public setOnHotspotClick(callback: (hotspot: Hotspot) => void): void { this.onHotspotClick = callback; }
+  public onHotspotClicked(callback: (hotspot: Hotspot) => void): void { this.onHotspotClick = callback; }
+  public setOnAircraftPositionsUpdate(_callback: (positions: never[]) => void): void { /* Civil aircraft streaming is not part of the globe renderers. */ }
 
-  private replacePoints(prefix: string, points: Array<{ id: string; lat: number; lon: number }>, color: unknown): void {
-    this.pendingPointSets.set(prefix, { points, color });
-    if (!this.viewer || this.destroyed) return;
-    this.renderPointSet(prefix, points, color);
+  // ─── Marker / path / polygon pipeline ─────────────────────────────────────
+
+  private setGroup(group: string, layer: MarkerGroupRecord['layer'], markers: CesiumMarker[], exempt = false): void {
+    this.markerGroups.set(group, { layer, markers, exempt });
+    this.flushMarkers();
   }
 
-  private renderPointSet(prefix: string, points: Array<{ id: string; lat: number; lon: number }>, color: unknown): void {
+  private setPaths(group: string, layer: keyof MapLayers, paths: CesiumPath[]): void {
+    this.pathGroups.set(group, { layer, paths });
+    this.flushPaths();
+  }
+
+  /** Bundled datasets that GlobeMap loads on demand when a layer is enabled. */
+  private ensureStaticLayers(): void {
+    const staticMarkerLayers: (keyof MapLayers)[] = ['nuclear', 'irradiators', 'spaceports', 'economic', 'datacenters', 'waterways', 'minerals'];
+    for (const layer of staticMarkerLayers) {
+      if (this.state.layers[layer] === true && !this.markerGroups.has(`static:${layer}`)) this.markerGroups.set(`static:${layer}`, { layer, markers: buildStaticMarkers(layer) });
+    }
+    if (this.state.layers.conflicts === true && !this.markerGroups.has('conflictZones')) this.markerGroups.set('conflictZones', { layer: 'conflicts', markers: buildConflictZoneMarkers() });
+    // The dashboard never calls setHotspots; every renderer seeds the bundled
+    // intel hotspots itself (GlobeMap does the same in its constructor).
+    if (this.state.layers.hotspots === true && !this.markerGroups.has('hotspots')) this.markerGroups.set('hotspots', { layer: 'hotspots', markers: buildHotspotMarkers(INTEL_HOTSPOTS) });
+    if (this.state.layers.bases === true && !this.markerGroups.has('bases')) {
+      const cached = getCachedMilitaryBases();
+      this.markerGroups.set('bases', { layer: 'bases', markers: buildMilitaryBaseMarkers(cached) });
+      if (cached.length === 0 && !this.basesLoadPending) {
+        this.basesLoadPending = true;
+        void preloadMilitaryBases().then((bases: MilitaryBase[]) => {
+          this.basesLoadPending = false;
+          if (this.destroyed) return;
+          this.setGroup('bases', 'bases', buildMilitaryBaseMarkers(bases));
+        }).catch((error) => { this.basesLoadPending = false; console.warn('[CesiumMapAdapter] Military base config unavailable:', error); });
+      }
+    }
+    if ((this.state.layers.cables === true || this.state.layers.pipelines === true) && !this.pathGroups.has('cables')) {
+      const { cables, pipelines } = buildStaticPaths(this.cableFaultIds, this.cableDegradedIds);
+      this.pathGroups.set('cables', { layer: 'cables', paths: cables });
+      this.pathGroups.set('pipelines', { layer: 'pipelines', paths: pipelines });
+    }
+    if (this.state.layers.tradeRoutes === true && !this.pathGroups.has('tradeRoutes')) this.pathGroups.set('tradeRoutes', { layer: 'tradeRoutes', paths: buildTradeRouteArcs() });
+  }
+
+  private flushAll(): void {
+    this.flushMarkers();
+    this.flushPaths();
+    this.flushPolygons();
+  }
+
+  private layerEnabled(layer: MarkerGroupRecord['layer'] | 'scenario'): boolean {
+    if (layer === 'news' || layer === 'flash' || layer === 'scenario') return true;
+    return this.state.layers[layer] === true;
+  }
+
+  private cssColor(css: string): unknown { return this.cesium.Color.fromCssColorString(css); }
+
+  private markerEntity(entityId: string, m: CesiumMarker): Record<string, unknown> {
+    const clamped = m.heightM === undefined;
+    const base: Record<string, unknown> = {
+      id: entityId,
+      position: this.cesium.Cartesian3.fromDegrees(m.lon, m.lat, m.heightM ?? 0),
+      properties: { kind: m.kind, layer: true },
+    };
+    if (m.style.glyph) {
+      base.label = {
+        text: m.style.glyph,
+        font: `${m.style.size}px sans-serif`,
+        fillColor: this.cssColor(m.style.color),
+        outlineColor: this.cssColor('rgba(0,0,0,0.85)'),
+        outlineWidth: 2,
+        style: this.cesium.LabelStyle.FILL_AND_OUTLINE,
+        verticalOrigin: this.cesium.VerticalOrigin.CENTER,
+        horizontalOrigin: this.cesium.HorizontalOrigin.CENTER,
+        heightReference: clamped ? this.cesium.HeightReference.CLAMP_TO_GROUND : this.cesium.HeightReference.NONE,
+        disableDepthTestDistance: Number.POSITIVE_INFINITY,
+      };
+    } else {
+      const fill = m.style.fillAlpha === undefined ? m.style.color : m.style.color.startsWith('#') && m.style.color.length === 7
+        ? `${m.style.color}${Math.round(m.style.fillAlpha * 255).toString(16).padStart(2, '0')}`
+        : m.style.color;
+      base.point = {
+        pixelSize: m.style.size,
+        color: this.cssColor(fill),
+        outlineColor: this.cssColor(m.style.outline ?? 'rgba(255,255,255,0.6)'),
+        outlineWidth: m.style.outline ? 2 : 1,
+        heightReference: clamped ? this.cesium.HeightReference.CLAMP_TO_GROUND : this.cesium.HeightReference.NONE,
+        disableDepthTestDistance: Number.POSITIVE_INFINITY,
+      };
+    }
+    return base;
+  }
+
+  private flushMarkers(): void {
     if (!this.viewer || this.destroyed) return;
-    const layer = ({ earthquake: 'natural', natural: 'natural', protest: 'protests', weather: 'weather' } as Record<string, keyof MapLayers>)[prefix];
-    if (layer && this.state.layers[layer] !== true) return;
-    for (const id of this.entityIds) if (id.startsWith(`${prefix}:`)) { this.viewer.entities.removeById(id); this.entityIds.delete(id); }
-    for (const point of points) {
-      const id = `${prefix}:${point.id}`;
-      this.viewer.entities.add({ id, position: this.cesium.Cartesian3.fromDegrees(point.lon, point.lat, EVENT_MARKER_HEIGHT), point: { pixelSize: 8, color } });
-      this.entityIds.add(id);
+    this.removeEntitiesWithPrefix('m:');
+    this.markerByEntityId.clear();
+    for (const key of [...this.entityCountByLayer.keys()]) if (!key.startsWith('poly') && !key.startsWith('path')) this.entityCountByLayer.delete(key);
+    const groups: GlobeMarkerGroup<CesiumMarker & { _group: string }>[] = [];
+    for (const [group, record] of this.markerGroups) {
+      if (!record.markers.length || !this.layerEnabled(record.layer)) continue;
+      const markers = record.markers.map((m) => ({ ...m, _group: group }));
+      groups.push({ layer: record.layer, markers, exempt: record.exempt, rank: markers.some((m) => m.rank !== undefined) ? (m) => m.rank ?? 0 : undefined });
+    }
+    // Same budget and nearest-first tie-break as GlobeMap, so truncation is
+    // disclosed identically and a capped static layer keeps what the camera sees.
+    const nearestFirst = proximityRank<CesiumMarker>({ lat: this.state.pan.y, lng: this.state.pan.x }, (m) => ({ lat: m.lat, lng: m.lon }));
+    for (const group of groups) { if (group.exempt) continue; if (group.rank) group.tieBreak = nearestFirst; else group.rank = nearestFirst; }
+    const budget = isMobileDevice() ? GLOBE_MARKER_BUDGET_MOBILE : GLOBE_MARKER_BUDGET_DESKTOP;
+    const { markers, truncated } = selectGlobeMarkers(groups, budget);
+    for (const m of markers) {
+      const entityId = `m:${m._group}:${m.id}`;
+      if (this.entityIds.has(entityId)) continue;
+      this.viewer.entities.add(this.markerEntity(entityId, m));
+      this.entityIds.add(entityId);
+      this.markerByEntityId.set(entityId, m);
+      const layerKey = this.markerGroups.get(m._group)?.layer ?? m._group;
+      this.entityCountByLayer.set(layerKey, (this.entityCountByLayer.get(layerKey) ?? 0) + 1);
+    }
+    this.markerTruncation = truncated;
+    this.renderedMarkerCount = markers.length;
+    this.viewer.scene.requestRender?.();
+  }
+
+  private flushPaths(): void {
+    if (!this.viewer || this.destroyed) return;
+    this.removeEntitiesWithPrefix('p:');
+    for (const key of [...this.entityCountByLayer.keys()]) if (key.startsWith('path:')) this.entityCountByLayer.delete(key);
+    for (const [group, record] of this.pathGroups) {
+      if (!this.layerEnabled(record.layer)) continue;
+      for (const path of record.paths) {
+        const flat: number[] = [];
+        const heights: number[] = [];
+        for (const p of path.points) { if (typeof p[0] === 'number' && typeof p[1] === 'number') { flat.push(p[0], p[1]); heights.push((p[2] ?? 0) * 1000); } }
+        if (flat.length < 4) continue;
+        const positions = path.clampToGround
+          ? this.cesium.Cartesian3.fromDegreesArray(flat)
+          : flat.reduce<unknown[]>((acc, _v, i) => { if (i % 2 === 0) acc.push(this.cesium.Cartesian3.fromDegrees(flat[i]!, flat[i + 1]!, heights[i / 2])); return acc; }, []);
+        const entityId = `p:${group}:${path.id}`;
+        this.viewer.entities.add({ id: entityId, name: path.name, polyline: { positions, width: path.width, material: this.cssColor(path.color), clampToGround: path.clampToGround } });
+        this.entityIds.add(entityId);
+        this.entityCountByLayer.set(`path:${record.layer}`, (this.entityCountByLayer.get(`path:${record.layer}`) ?? 0) + 1);
+      }
     }
     this.viewer.scene.requestRender?.();
   }
 
-  public setEarthquakes(items: Earthquake[]): void {
-    this.replacePoints('earthquake', items.flatMap((item) => item.location ? [{ id: String(item.id), lat: item.location.latitude, lon: item.location.longitude }] : []), this.cesium.Color.YELLOW);
+  private flushPolygons(): void {
+    if (!this.viewer || this.destroyed) return;
+    this.removeEntitiesWithPrefix('poly:');
+    for (const key of [...this.entityCountByLayer.keys()]) if (key.startsWith('poly:')) this.entityCountByLayer.delete(key);
+    // Derived polygon groups from country geometry.
+    if (this.countriesGeoData) {
+      const cii: CesiumPolygon[] = [];
+      const scenario: CesiumPolygon[] = [];
+      const affected = new Set(this.scenarioIso2s);
+      for (const feature of this.countriesGeoData.features) {
+        const code = feature.properties?.['ISO3166-1-Alpha-2'];
+        if (typeof code !== 'string' || !feature.geometry) continue;
+        const score = this.ciiScores.get(code);
+        const ringSets = polygonRingSets(feature.geometry);
+        if (score) ringSets.forEach((rings, i) => cii.push({ id: `${code}:${i}`, rings, fill: CII_COLORS[score.level] ?? 'rgba(0,0,0,0)', stroke: 'rgba(80,80,80,0.3)', label: `${code} CII ${score.score}/100 (${score.level})` }));
+        if (affected.has(code)) ringSets.forEach((rings, i) => scenario.push({ id: `${code}:${i}`, rings, fill: 'rgba(220,60,40,0.3)', stroke: null, label: code }));
+      }
+      this.polygonGroups.set('cii', { layer: 'ciiChoropleth', polygons: cii });
+      this.polygonGroups.set('scenario', { layer: 'scenario', polygons: scenario });
+    }
+    for (const [group, record] of this.polygonGroups) {
+      if (!this.layerEnabled(record.layer)) continue;
+      for (const poly of record.polygons) {
+        const id = `poly:${group}:${poly.id}`;
+        this.addGroundPolygon(id, poly.rings, poly.fill, poly.stroke, { name: poly.label });
+        this.entityCountByLayer.set(`poly:${record.layer}`, (this.entityCountByLayer.get(`poly:${record.layer}`) ?? 0) + 1);
+      }
+    }
+    this.viewer.scene.requestRender?.();
   }
-  public setNaturalEvents(items: NaturalEvent[]): void { this.replacePoints('natural', items.map((item) => ({ id: item.id, lat: item.lat, lon: item.lon })), this.cesium.Color.ORANGE); }
-  public setProtests(items: SocialUnrestEvent[]): void { this.replacePoints('protest', items.map((item) => ({ id: item.id, lat: item.lat, lon: item.lon })), this.cesium.Color.RED); }
-  public setWeatherAlerts(items: WeatherAlert[]): void {
-    this.replacePoints('weather', items.flatMap((item) => { const point = item.centroid ?? item.coordinates[0]; return point ? [{ id: item.id, lat: point[1], lon: point[0] }] : []; }), this.cesium.Color.CYAN);
+
+  private handleMarkerClick(m: CesiumMarker, position: { x: number; y: number }): void {
+    if (m.hotspot) this.onHotspotClick?.(m.hotspot);
+    if (m.zoomOnClick) { this.applyCenter(m.lat, m.lon, Math.min(MAX_ZOOM, this.state.zoom + 1.3)); return; }
+    if (m.popup && this.popup) {
+      const at = this.screenPositionFor(m.lon, m.lat, position);
+      this.popup.show({ type: m.popup.type, data: m.popup.data, x: at.x, y: at.y });
+      if (m.popup.type === 'conflict') this.popup.loadConflictHistory?.(m.popup.data as ConflictZone);
+      if (m.popup.type === 'militaryFlight') { const hex = (m.popup.data as { hexCode?: string }).hexCode; if (hex) this.popup.loadWingbitsLiveFlight?.(hex); }
+      return;
+    }
+    this.showTooltip(m.title, position);
   }
-  public setLayerLoading(_layer: keyof MapLayers, _loading: boolean): void { /* Fixture spike has no loading pipeline. */ }
-  public setLayerReady(_layer: keyof MapLayers, _hasData: boolean): void { /* Point setters own readiness in this spike. */ }
+
+  /** GlobeMap's marker tooltip: a compact text card at the click position. */
+  private showTooltip(text: string, position: { x: number; y: number }): void {
+    this.hideTooltip();
+    if (!text) return;
+    const el = document.createElement('div');
+    el.className = 'cesium-marker-tooltip';
+    el.setAttribute('role', 'tooltip');
+    el.style.cssText = 'position:absolute;z-index:1000;max-width:280px;padding:6px 10px;border-radius:3px;background:rgba(10,12,16,0.95);border:1px solid rgba(60,120,60,0.6);color:#d4d4d4;font-family:var(--font-mono, monospace);font-size:11px;line-height:1.4;pointer-events:auto;';
+    el.textContent = text;
+    el.style.left = `${Math.max(0, position.x + 10)}px`;
+    el.style.top = `${Math.max(0, position.y - 10)}px`;
+    this.container.appendChild(el);
+    this.tooltipEl = el;
+  }
+
+  private hideTooltip(): void {
+    this.tooltipEl?.remove();
+    this.tooltipEl = null;
+  }
+
+  // ─── Feed setters (MapContainer contract; names mirror GlobeMap) ──────────
+
+  public setHotspots(items: Hotspot[]): void { this.setGroup('hotspots', 'hotspots', buildHotspotMarkers(items)); }
+  public setMilitaryFlights(items: MilitaryFlight[]): void { this.setGroup('flights', 'military', buildMilitaryFlightMarkers(items)); }
+  public setMilitaryVessels(vessels: MilitaryVessel[], clusters: MilitaryVesselCluster[] = []): void {
+    this.markerGroups.set('vessels', { layer: 'military', markers: buildMilitaryVesselMarkers(vessels) });
+    this.setGroup('vesselClusters', 'military', buildVesselClusterMarkers(clusters));
+  }
+  public setWeatherAlerts(items: WeatherAlert[]): void { this.setGroup('weather', 'weather', buildWeatherMarkers(items)); }
+  public setNaturalEvents(items: NaturalEvent[]): void {
+    const { paths, cones } = buildStormPathsAndCones(items);
+    this.pathGroups.set('storms', { layer: 'natural', paths });
+    this.polygonGroups.set('cones', { layer: 'natural', polygons: cones });
+    this.setGroup('natural', 'natural', buildNaturalMarkers(items));
+    this.flushPaths();
+    this.flushPolygons();
+  }
+  public setEarthquakes(items: Earthquake[]): void { this.setGroup('earthquakes', 'natural', buildEarthquakeMarkers(items)); }
+  public setRadiationObservations(items: RadiationObservation[]): void { this.setGroup('radiation', 'radiationWatch', buildRadiationMarkers(items)); }
+  public setImageryScenes(scenes: ImageryScene[]): void {
+    const { markers, footprints } = buildImagerySceneMarkers(scenes);
+    this.polygonGroups.set('imagery', { layer: 'satellites', polygons: footprints });
+    this.setGroup('imagery', 'satellites', markers);
+    this.flushPolygons();
+  }
+  public setOutages(items: InternetOutage[]): void { this.setGroup('outages', 'outages', buildOutageMarkers(items)); }
+  public setTrafficAnomalies(items: ProtoTrafficAnomaly[]): void { this.setGroup('trafficAnomalies', 'outages', buildTrafficAnomalyMarkers(items)); }
+  public setDdosLocations(items: DdosLocationHit[]): void { this.setGroup('ddos', 'outages', buildDdosMarkers(items)); }
+  public setAisData(disruptions: AisDisruptionEvent[], _density: AisDensityZone[]): void { this.setGroup('ais', 'ais', buildAisDisruptionMarkers(disruptions)); }
+  public setCableActivity(advisories: CableAdvisory[], repairShips: RepairShip[]): void {
+    const built = buildCableActivityMarkers(advisories, repairShips);
+    this.cableFaultIds = built.faultIds;
+    this.cableDegradedIds = built.degradedIds;
+    this.markerGroups.set('cableAdvisories', { layer: 'cables', markers: built.advisories });
+    this.setGroup('repairShips', 'cables', built.ships);
+    if (this.pathGroups.has('cables')) { const { cables } = buildStaticPaths(this.cableFaultIds, this.cableDegradedIds); this.setPaths('cables', 'cables', cables); }
+  }
+  public setCableHealth(_m: unknown): void { /* GlobeMap ignores this too; fault/degraded state comes from advisories. */ }
+  public setProtests(items: SocialUnrestEvent[]): void { this.setGroup('protests', 'protests', buildProtestMarkers(items)); }
+  public setFlightDelays(items: AirportDelayAlert[]): void {
+    const { delays, notams } = buildFlightDelayMarkers(items);
+    this.markerGroups.set('flightDelays', { layer: 'flights', markers: delays });
+    this.setGroup('notams', 'flights', notams);
+  }
+  public setNewsLocations(items: Array<{ lat: number; lon: number; title: string; threatLevel: string; timestamp?: Date }>): void { this.setGroup('news', 'news', buildNewsLocationMarkers(items), true); }
+  public setCyberThreats(items: CyberThreat[]): void { this.setGroup('cyber', 'cyberThreats', buildCyberMarkers(items)); }
+  public setIranEvents(items: IranEvent[]): void { this.setGroup('iran', 'iranAttacks', buildIranEventMarkers(items)); }
+  public setFires(items: Array<{ lat: number; lon: number; brightness: number; region: string; [key: string]: unknown }>): void { this.setGroup('fires', 'fires', buildFireMarkers(items)); }
+  public setWebcams(items: Array<WebcamEntry | WebcamCluster>): void { this.setGroup('webcams', 'webcams', buildWebcamMarkers(items)); }
+  public setUcdpEvents(items: UcdpGeoEvent[]): void { this.setGroup('ucdp', 'ucdpEvents', buildUcdpMarkers(items)); }
+  public setDisplacementFlows(items: DisplacementFlow[]): void { this.setGroup('displacement', 'displacement', buildDisplacementMarkers(items)); }
+  public setClimateAnomalies(items: ClimateAnomaly[]): void { this.setGroup('climate', 'climate', buildClimateMarkers(items)); }
+  public setGpsJamming(items: GpsJamHex[]): void { this.setGroup('gpsJamming', 'gpsJamming', buildGpsJamMarkers(items)); }
+  public setSatellites(positions: SatellitePosition[]): void {
+    const { markers, orbits } = buildSatelliteMarkers(positions);
+    this.pathGroups.set('orbits', { layer: 'satellites', paths: orbits });
+    this.setGroup('satellites', 'satellites', markers);
+    this.flushPaths();
+  }
+  public setTechEvents(items: Array<{ id: string; title: string; lat: number; lng: number; country: string; daysUntil: number; [key: string]: unknown }>): void { this.setGroup('tech', 'techEvents', buildTechEventMarkers(items)); }
+  public setCIIScores(scores: Array<{ code: string; score: number; level: string }>): void {
+    this.ciiScores = new Map(scores.map((s) => [s.code, { score: s.score, level: s.level }]));
+    this.flushPolygons();
+  }
+  public setScenarioState(state: ScenarioVisualState | null): void {
+    this.scenarioIso2s = state?.affectedIso2s ?? [];
+    this.flushPolygons();
+  }
+  public setChokepointData(data: GetChokepointStatusResponse | null): void { this.popup?.setChokepointData?.(data); }
+  public openChokepoint(id: string): void {
+    const waterway = STRATEGIC_WATERWAYS.find((w) => w.id === id || w.chokepointId === id);
+    if (!waterway) return;
+    this.applyCenter(waterway.lat, waterway.lon, 5);
+    this.popup?.show({ type: 'waterway', data: waterway, x: this.container.clientWidth / 2, y: this.container.clientHeight / 2 });
+  }
+  public setRenderPaused(paused: boolean): void {
+    this.renderPaused = paused;
+    if (this.viewer && 'useDefaultRenderLoop' in this.viewer) (this.viewer as { useDefaultRenderLoop?: boolean }).useDefaultRenderLoop = !paused;
+  }
+  public setLayerLoading(_layer: keyof MapLayers, _loading: boolean): void { /* Loading badges are dashboard chrome. */ }
+  public setLayerReady(_layer: keyof MapLayers, _hasData: boolean): void { /* Setters own readiness. */ }
+
+  /** Marker budget outcome, for diagnostics parity with GlobeMap. */
+  public getMarkerLoad(): { rendered: number; truncated: Record<string, unknown>; paused: boolean } {
+    return { rendered: this.renderedMarkerCount, truncated: this.markerTruncation, paused: this.renderPaused };
+  }
+
   public getLayerStatus(layer: keyof MapLayers): 'rendered' | 'unsupported' {
     if (!(CESIUM_SPIKE_LIMITATIONS.renderedLayers as readonly string[]).includes(layer)) return 'unsupported';
-    if (layer === 'conflicts') return this.viewer && this.state.layers.conflicts === true && this.getConflictEntityIds().length > 0 ? 'rendered' : 'unsupported';
-    const prefix = ({ earthquakes: 'earthquake', natural: 'natural', protests: 'protest', weather: 'weather', flash: 'flash' } as Record<string, string>)[layer] ?? '';
-    return this.viewer && this.state.layers[layer] === true && (this.pendingPointSets.get(prefix)?.points.length ?? 0) > 0 && [...this.entityIds].some((id) => id.startsWith(`${prefix}:`)) ? 'rendered' : 'unsupported';
+    if (!this.viewer || this.state.layers[layer] !== true) return 'unsupported';
+    if (layer === 'conflicts' && this.getConflictEntityIds().length > 0) return 'rendered';
+    const count = (this.entityCountByLayer.get(layer) ?? 0) + (this.entityCountByLayer.get(`path:${layer}`) ?? 0) + (this.entityCountByLayer.get(`poly:${layer}`) ?? 0);
+    return count > 0 ? 'rendered' : 'unsupported';
   }
+
   public flashLocation(lat: number, lon: number, durationMs = 1500): void {
-    this.replacePoints('flash', [{ id: 'active', lat, lon }], this.cesium.Color.CYAN);
+    this.setGroup('flash', 'flash', [{ id: 'active', kind: 'flash', lat, lon, title: '', style: { color: '#00e5ff', size: 12, outline: '#00e5ff', fillAlpha: 0.35 } }], true);
     if (this.flashTimer) clearTimeout(this.flashTimer);
-    this.flashTimer = setTimeout(() => { if (!this.destroyed) this.replacePoints('flash', [], this.cesium.Color.CYAN); }, durationMs);
+    this.flashTimer = setTimeout(() => { if (!this.destroyed) this.setGroup('flash', 'flash', [], true); }, durationMs);
   }
 
   public destroy(): void {
@@ -792,6 +1127,9 @@ export class CesiumMapAdapter {
     this.viewer?.destroy();
     this.viewer = null;
     this.entityIds.clear();
+    this.markerByEntityId.clear();
+    this.entityCountByLayer.clear();
+    this.hideTooltip();
     try { this.popup?.hide(); } catch { /* popup DOM is discarded with the container */ }
     this.popup = null;
     this.countriesGeoData = null;

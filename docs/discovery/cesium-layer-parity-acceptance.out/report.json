@@ -1,0 +1,142 @@
+{
+  "url": "http://127.0.0.1:4200/?cesiumSpike=1&lat=30&lon=40&zoom=2.4&layers=conflicts,bases,nuclear,irradiators,spaceports,economic,datacenters,waterways,minerals,cables,pipelines,tradeRoutes,hotspots,military,weather,natural,radiationWatch,flights,ais,iranAttacks,outages,cyberThreats,fires,protests,ucdpEvents,displacement,climate,gpsJamming,satellites,techEvents,webcams,ciiChoropleth",
+  "startedAt": "2026-09-11T17:59:24.116Z",
+  "steps": [
+    {
+      "name": "settle",
+      "tilesLoaded": true,
+      "dataSourceReady": true,
+      "renders": 41
+    },
+    {
+      "name": "layer-status",
+      "totalEntities": 1163,
+      "markers": 798,
+      "paths": 231,
+      "polygons": 108,
+      "conflictPolys": 26,
+      "groups": {
+        "conflict:iran": 2,
+        "conflict:strait_hormuz": 3,
+        "conflict:ukraine": 2,
+        "conflict:gaza": 3,
+        "conflict:south_lebanon": 3,
+        "conflict:yemen_redsea": 3,
+        "conflict:sudan": 2,
+        "conflict:myanmar": 2,
+        "conflict:korean_dmz": 3,
+        "conflict:pak_afghan": 3,
+        "poly:cii": 108,
+        "p:cables": 86,
+        "p:pipelines": 88,
+        "p:tradeRoutes": 57,
+        "m:static": 434,
+        "m:conflictZones": 10,
+        "m:hotspots": 29,
+        "m:bases": 119,
+        "m:displacement": 45,
+        "m:cableAdvisories": 24,
+        "m:repairShips": 22,
+        "m:flightDelays": 115
+      },
+      "perLayer": {
+        "conflicts": "rendered",
+        "bases": "rendered",
+        "nuclear": "rendered",
+        "irradiators": "rendered",
+        "spaceports": "rendered",
+        "economic": "rendered",
+        "datacenters": "rendered",
+        "waterways": "rendered",
+        "minerals": "rendered",
+        "cables": "rendered",
+        "pipelines": "rendered",
+        "tradeRoutes": "rendered",
+        "hotspots": "rendered",
+        "military": "unsupported",
+        "weather": "unsupported",
+        "natural": "unsupported",
+        "radiationWatch": "unsupported",
+        "flights": "rendered",
+        "ais": "unsupported",
+        "iranAttacks": "unsupported",
+        "outages": "unsupported",
+        "cyberThreats": "unsupported",
+        "fires": "unsupported",
+        "protests": "unsupported",
+        "ucdpEvents": "unsupported",
+        "displacement": "rendered",
+        "climate": "unsupported",
+        "gpsJamming": "unsupported",
+        "satellites": "unsupported",
+        "techEvents": "unsupported",
+        "webcams": "unsupported",
+        "ciiChoropleth": "rendered"
+      },
+      "markerLoad": {
+        "rendered": 798,
+        "truncated": {
+          "nuclear": {
+            "shown": 119,
+            "total": 250
+          },
+          "irradiators": {
+            "shown": 119,
+            "total": 124
+          },
+          "datacenters": {
+            "shown": 119,
+            "total": 313
+          },
+          "bases": {
+            "shown": 119,
+            "total": 226
+          }
+        },
+        "paused": false
+      }
+    },
+    {
+      "name": "settle-gulf",
+      "tilesLoaded": true,
+      "dataSourceReady": true,
+      "renders": 46
+    },
+    {
+      "name": "all-off",
+      "remaining": 0
+    },
+    {
+      "name": "summary",
+      "staticAllRendered": true,
+      "staticMissing": [],
+      "liveRendered": [
+        "hotspots",
+        "flights",
+        "displacement",
+        "ciiChoropleth"
+      ],
+      "liveEmpty": [
+        "military",
+        "weather",
+        "natural",
+        "radiationWatch",
+        "ais",
+        "iranAttacks",
+        "outages",
+        "cyberThreats",
+        "fires",
+        "protests",
+        "ucdpEvents",
+        "climate",
+        "gpsJamming",
+        "satellites",
+        "techEvents",
+        "webcams"
+      ]
+    }
+  ],
+  "pass": true,
+  "pageErrors": [],
+  "finishedAt": "2026-09-11T17:59:41.281Z"
+}
