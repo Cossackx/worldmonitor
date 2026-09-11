@@ -1,0 +1,103 @@
+{
+  "url": "http://127.0.0.1:4200/?cesiumSpike=1&lat=32&lon=53&zoom=4&layers=conflicts",
+  "startedAt": "2026-09-11T17:23:45.238Z",
+  "steps": [
+    {
+      "name": "adapter-status",
+      "basemap": {
+        "status": "ready",
+        "source": "esri-imagery",
+        "error": null,
+        "notice": null
+      },
+      "terrain": {
+        "status": "ready",
+        "error": null
+      },
+      "conflictsLayer": true,
+      "layerStatus": "rendered",
+      "entityCount": 26,
+      "hasIranCountryPolygon": true,
+      "regionalIds": [
+        "conflict:strait_hormuz:regional:0",
+        "conflict:gaza:regional:0",
+        "conflict:south_lebanon:regional:0",
+        "conflict:yemen_redsea:regional:0",
+        "conflict:korean_dmz:regional:0",
+        "conflict:pak_afghan:regional:0"
+      ],
+      "regionalLabels": [
+        "Strait of Hormuz Crisis — approximate conflict area",
+        "Gaza Conflict — approximate conflict area",
+        "Israel-Lebanon Border — approximate conflict area",
+        "Red Sea Crisis — approximate conflict area",
+        "Korean Demilitarized Zone — approximate conflict area",
+        "Pakistan–Afghanistan Border Conflict — approximate conflict area"
+      ]
+    },
+    {
+      "name": "settle-with-conflicts",
+      "tilesLoaded": true,
+      "renders": 6
+    },
+    {
+      "name": "settle-wide-with-conflicts",
+      "tilesLoaded": true,
+      "renders": 7
+    },
+    {
+      "name": "settle-wide-without-conflicts",
+      "tilesLoaded": true,
+      "renders": 1
+    },
+    {
+      "name": "pixel-diff",
+      "canvas": {
+        "w": 862,
+        "h": 689
+      },
+      "changedPixels": 79328,
+      "changedFraction": 0.134,
+      "changedBox": {
+        "x": 0,
+        "y": 0,
+        "w": 862,
+        "h": 511
+      },
+      "localFootprint": true
+    },
+    {
+      "name": "settle-for-click",
+      "tilesLoaded": true,
+      "renders": 1
+    },
+    {
+      "name": "click-conflict-popup",
+      "popups": 1,
+      "text": [
+        "IRAN WAR THEATER HIGH × START DATE Feb 28, 2026 CASUALTIES 200+ killed (first 72"
+      ]
+    },
+    {
+      "name": "Iran",
+      "via": "callback",
+      "lat": 31.991334135127712,
+      "lon": 52.99999997903157,
+      "code": "IR"
+    },
+    {
+      "name": "fit-country",
+      "lat": 32.4,
+      "lon": 53.4,
+      "zoom": 4
+    },
+    {
+      "name": "settle-fit",
+      "tilesLoaded": true,
+      "renders": 1
+    }
+  ],
+  "pass": true,
+  "pageErrors": [],
+  "finishedAt": "2026-09-11T17:23:50.902Z"
+}

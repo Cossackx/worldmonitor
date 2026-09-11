@@ -11,14 +11,19 @@
  * imagery. Point data is always supplied by the dashboard, never fabricated here.
  */
 import * as Cesium from 'cesium';
+import type { FeatureCollection, Geometry } from 'geojson';
 import type { MapContainerState, MapView, TimeRange } from './MapContainer';
 import type { CountryClickPayload } from './DeckGLMap';
-import type { MapLayers, NaturalEvent, SocialUnrestEvent, Hotspot } from '@/types';
+import type { MapLayers, NaturalEvent, SocialUnrestEvent, Hotspot, ConflictZone } from '@/types';
 import type { Earthquake } from '@/services/earthquakes';
 import type { WeatherAlert } from '@/services/weather';
+import { CONFLICT_ZONES } from '@/config/geo';
+import { getCountryAtCoordinates, getCountryBbox, getCountriesGeoJson } from '@/services/country-geometry';
+import { CONFLICT_COUNTRY_ISO, resolveConflictZoneFeatures, type ConflictZoneFeature } from '../../shared/conflict-zone-geometry';
+import { MapPopup } from './MapPopup';
 
 export const CESIUM_SPIKE_LIMITATIONS = Object.freeze({
-  renderedLayers: ['earthquakes', 'natural', 'protests', 'weather', 'flash'] as const,
+  renderedLayers: ['earthquakes', 'natural', 'protests', 'weather', 'flash', 'conflicts'] as const,
   unsupportedLayers: 'All other MapLayers entries are preserved as state but have no Cesium entities.',
   providers: 'No imagery or terrain network is activated unless enableKeylessBasemap is explicitly true. That option uses the keyless Esri World Imagery service (attribution required) with OpenStreetMap tiles as the fallback, and keyless Re:Earth ellipsoidal terrain with a flat ellipsoid fallback. No key, token, or billable provider is ever used.',
   camera: 'Longitude/latitude/zoom are canonical; Cesium heading, pitch, and height are not round-tripped.',
@@ -37,7 +42,21 @@ export type CesiumMapAdapterOptions = {
   basemap?: CesiumBasemapSource;
   /** Opt out of keyless Re:Earth terrain (defaults to enabled whenever a basemap is enabled). */
   enableKeylessTerrain?: boolean;
+  /** Country geometry source. Defaults to the shared country-geometry service (`/data/countries.geojson`). */
+  loadCountries?: () => Promise<FeatureCollection<Geometry> | null>;
+  /** Point-in-country resolver for clicks. Defaults to the shared service. */
+  countryAt?: (lat: number, lon: number) => { code: string; name: string } | null;
+  /** Country bbox lookup for fitCountry. Defaults to the shared service. */
+  countryBbox?: (code: string) => [number, number, number, number] | null;
+  /** Popup factory; defaults to the shared MapPopup so conflict clicks match the 2D renderers. */
+  createPopup?: (container: HTMLElement) => CesiumPopup;
 };
+
+export interface CesiumPopup {
+  show(data: { type: 'conflict'; data: ConflictZone; x: number; y: number }): void;
+  loadConflictHistory?(conflict: ConflictZone): void;
+  hide(): void;
+}
 
 export type CesiumBasemapStatus = 'isolated' | 'loading' | 'ready' | 'failed';
 /** `flat` means the ellipsoid is in use because Re:Earth could not be reached; it is not a failure of the map. */
@@ -45,11 +64,20 @@ export type CesiumTerrainStatus = 'isolated' | 'loading' | 'ready' | 'flat';
 
 export interface CesiumDependency {
   Viewer: new (container: HTMLElement, options: Record<string, unknown>) => CesiumViewer;
-  Cartesian3: { fromDegrees(lon: number, lat: number, height?: number): unknown };
+  Cartesian3: {
+    fromDegrees(lon: number, lat: number, height?: number): unknown;
+    fromDegreesArray(coordinates: number[]): unknown[];
+  };
   Cartographic: { fromCartesian(position: unknown): { longitude: number; latitude: number } };
   Math: { toDegrees(radians: number): number; toRadians(degrees: number): number };
-  Color: { CYAN: unknown; ORANGE: unknown; RED: unknown; YELLOW: unknown };
+  Color: { CYAN: unknown; ORANGE: unknown; RED: unknown; YELLOW: unknown; fromCssColorString(css: string): unknown };
   ScreenSpaceEventType: { LEFT_CLICK: unknown; RIGHT_CLICK: unknown };
+  PolygonHierarchy: new (positions: unknown[], holes?: unknown[]) => unknown;
+  ClassificationType: { TERRAIN: unknown };
+  VerticalOrigin: { BOTTOM: unknown };
+  LabelStyle: { FILL_AND_OUTLINE: unknown };
+  HeightReference: { CLAMP_TO_GROUND: unknown };
+  SceneTransforms?: { worldToWindowCoordinates(scene: unknown, position: unknown): { x: number; y: number } | undefined };
   EllipsoidTerrainProvider: new () => unknown;
   OpenStreetMapImageryProvider: new (options: { url: string; credit: string }) => CesiumImageryProvider;
   ArcGisMapServerImageryProvider: { fromUrl(url: string, options?: { credit?: string }): Promise<CesiumImageryProvider> };
@@ -87,6 +115,7 @@ export interface CesiumViewer {
     add(entity: Record<string, unknown>): unknown;
     removeById(id: string): boolean;
     removeAll(): void;
+    getById?(id: string): unknown;
   };
   imageryLayers: {
     add(layer: unknown, index?: number): unknown;
@@ -136,6 +165,25 @@ export const REEARTH_TERRAIN_CREDIT = 'Terrain: Re:Earth Terrain / Mapterhorn (C
 // Two tile failures on the active Esri provider trigger the OSM fallback; one
 // transient error is left to Cesium's own retry, as in God's Eye.
 const ESRI_FAILURES_BEFORE_FALLBACK = 2;
+// Conflict overlay styling mirrors GlobeMap so 2D/3D read the same. Country
+// zones use the canonical country boundary; regional zones are approximate
+// areas and are drawn in orange with an explicit label, never as a border.
+const CONFLICT_FILL: Record<string, string> = { high: 'rgba(255,40,40,0.25)', medium: 'rgba(255,120,0,0.20)', low: 'rgba(255,200,0,0.15)' };
+const CONFLICT_STROKE: Record<string, string> = { high: '#ff3030', medium: '#ff8800', low: '#ffcc00' };
+const REGIONAL_FILL = 'rgba(255,120,0,0.18)';
+const REGIONAL_STROKE = '#ff9600';
+const COUNTRY_HIGHLIGHT_STROKE = '#00e5ff';
+const CONFLICT_ENTITY_PREFIX = 'conflict:';
+const HIGHLIGHT_ENTITY_PREFIX = 'country-highlight:';
+
+type Ring = number[][];
+
+/** Outer ring + holes of every polygon in a GeoJSON geometry, in [lon, lat] order. */
+export function polygonRingSets(geometry: Geometry): Ring[][] {
+  if (geometry.type === 'Polygon') return [geometry.coordinates as Ring[]];
+  if (geometry.type === 'MultiPolygon') return geometry.coordinates as Ring[][];
+  return [];
+}
 
 export function clampCesiumCameraState(lat: number, lon: number, zoom: number): { lat: number; lon: number; zoom: number } {
   const normalizedLon = ((((lon + 180) % 360) + 360) % 360) - 180;
@@ -180,6 +228,10 @@ export class CesiumMapAdapter {
   private terrainError: string | null = null;
   private terrainPromise: Promise<void> | null = null;
   private terrainCredit: unknown = null;
+  private countriesGeoData: FeatureCollection<Geometry> | null = null;
+  private countriesPromise: Promise<void> | null = null;
+  private popup: CesiumPopup | null = null;
+  private onCountryClick: ((country: CountryClickPayload) => void) | null = null;
 
   public constructor(container: HTMLElement, initialState: MapContainerState, options: CesiumMapAdapterOptions) {
     this.container = container;
@@ -228,10 +280,15 @@ export class CesiumMapAdapter {
       // Terrain is deliberately not awaited: Re:Earth's layer.json fetch must
       // not delay readiness, and the flat ellipsoid is a correct interim state.
       if (this.wantsKeylessTerrain()) this.terrainPromise = this.activateKeylessTerrain();
+      this.popup = (this.options.createPopup ?? ((container) => new MapPopup(container) as unknown as CesiumPopup))(this.container);
       this.installPicking();
       this.installCameraTracking();
       this.applyCenter(this.state.pan.y, this.state.pan.x, this.state.zoom);
       for (const [prefix, pointSet] of this.pendingPointSets) this.renderPointSet(prefix, pointSet.points, pointSet.color);
+      // Country geometry is the same local source the 2D renderers use. Not
+      // awaited: the conflicts layer appears once it lands, and a load failure
+      // leaves country-mapped zones absent rather than drawing a guessed border.
+      this.countriesPromise = this.loadCountryGeometry();
       this.resize();
       this.render();
     } catch (error) {
@@ -258,6 +315,182 @@ export class CesiumMapAdapter {
   /** Dev/diagnostic access to the underlying viewer. Not part of the MapContainer contract. */
   public getViewerForDiagnostics(): CesiumViewer | null {
     return this.viewer;
+  }
+
+  /** Resolves once the country geometry load has settled (loaded or failed). Never rejects. */
+  public whenCountriesSettled(): Promise<void> {
+    return this.countriesPromise ?? Promise.resolve();
+  }
+
+  /** Ids of the conflict entities currently on the globe (diagnostics and tests). */
+  public getConflictEntityIds(): string[] {
+    return [...this.entityIds].filter((id) => id.startsWith(CONFLICT_ENTITY_PREFIX));
+  }
+
+  private async loadCountryGeometry(): Promise<void> {
+    try {
+      const geojson = await (this.options.loadCountries ?? getCountriesGeoJson)();
+      if (this.destroyed) return;
+      this.countriesGeoData = geojson;
+    } catch (error) {
+      console.warn('[CesiumMapAdapter] country geometry unavailable; country-mapped conflict zones stay hidden:', error);
+      this.countriesGeoData = null;
+    }
+    this.renderConflictZones();
+  }
+
+  // ─── Conflict zones and country boundaries ────────────────────────────────
+
+  private removeEntitiesWithPrefix(prefix: string): void {
+    for (const id of [...this.entityIds]) {
+      if (!id.startsWith(prefix)) continue;
+      this.viewer?.entities.removeById(id);
+      this.entityIds.delete(id);
+    }
+  }
+
+  private ringToPositions(ring: Ring): unknown[] {
+    const flat: number[] = [];
+    for (const point of ring) {
+      const lon = point[0];
+      const lat = point[1];
+      if (typeof lon === 'number' && typeof lat === 'number') flat.push(lon, lat);
+    }
+    return this.cesium.Cartesian3.fromDegreesArray(flat);
+  }
+
+  private hierarchyFor(rings: Ring[]): unknown | null {
+    const [outer, ...holes] = rings;
+    if (!outer || outer.length < 3) return null;
+    const holeHierarchies = holes.filter((h) => h.length >= 3).map((h) => new this.cesium.PolygonHierarchy(this.ringToPositions(h)));
+    return new this.cesium.PolygonHierarchy(this.ringToPositions(outer), holeHierarchies);
+  }
+
+  private addGroundPolygon(id: string, rings: Ring[], fillCss: string, strokeCss: string, extra: Record<string, unknown> = {}): void {
+    if (!this.viewer) return;
+    const hierarchy = this.hierarchyFor(rings);
+    const outer = rings[0];
+    if (!hierarchy || !outer) return;
+    // Ground-classified polygons conform to the terrain; Cesium draws no outline
+    // for them, so the stroke is a separate clamped polyline.
+    this.viewer.entities.add({
+      id,
+      polygon: { hierarchy, material: this.cesium.Color.fromCssColorString(fillCss), classificationType: this.cesium.ClassificationType.TERRAIN },
+      ...extra,
+    });
+    this.entityIds.add(id);
+    const strokeId = `${id}:stroke`;
+    this.viewer.entities.add({
+      id: strokeId,
+      polyline: { positions: this.ringToPositions(outer), width: 2, material: this.cesium.Color.fromCssColorString(strokeCss), clampToGround: true },
+    });
+    this.entityIds.add(strokeId);
+  }
+
+  private renderConflictZones(): void {
+    if (!this.viewer || this.destroyed) return;
+    this.removeEntitiesWithPrefix(CONFLICT_ENTITY_PREFIX);
+    if (this.state.layers.conflicts !== true) { this.viewer.scene.requestRender?.(); return; }
+    const features: ConflictZoneFeature[] = resolveConflictZoneFeatures(CONFLICT_ZONES, CONFLICT_COUNTRY_ISO, this.countriesGeoData);
+    for (const feature of features) {
+      const props = feature.properties;
+      const regional = props.geometryKind === 'regional';
+      const fill = regional ? REGIONAL_FILL : (CONFLICT_FILL[props.intensity ?? 'low'] ?? CONFLICT_FILL.low!);
+      const stroke = regional ? REGIONAL_STROKE : (CONFLICT_STROKE[props.intensity ?? 'low'] ?? CONFLICT_STROKE.low!);
+      const ringSets = polygonRingSets(feature.geometry);
+      ringSets.forEach((rings, index) => {
+        const id = `${CONFLICT_ENTITY_PREFIX}${props.id}:${props.countryCode ?? 'regional'}:${index}`;
+        this.addGroundPolygon(id, rings, fill, stroke, { properties: { zoneId: props.id, geometryKind: props.geometryKind } });
+      });
+      if (regional) {
+        const zone = CONFLICT_ZONES.find((candidate) => candidate.id === props.id);
+        if (zone) {
+          const labelId = `${CONFLICT_ENTITY_PREFIX}${props.id}:label`;
+          this.viewer.entities.add({
+            id: labelId,
+            position: this.cesium.Cartesian3.fromDegrees(zone.center[0], zone.center[1]),
+            label: {
+              text: props.label,
+              font: '12px monospace',
+              fillColor: this.cesium.Color.fromCssColorString(REGIONAL_STROKE),
+              outlineColor: this.cesium.Color.fromCssColorString('rgba(0,0,0,0.85)'),
+              outlineWidth: 3,
+              style: this.cesium.LabelStyle.FILL_AND_OUTLINE,
+              verticalOrigin: this.cesium.VerticalOrigin.BOTTOM,
+              heightReference: this.cesium.HeightReference.CLAMP_TO_GROUND,
+              disableDepthTestDistance: Number.POSITIVE_INFINITY,
+            },
+          });
+          this.entityIds.add(labelId);
+        }
+      }
+    }
+    this.viewer.scene.requestRender?.();
+  }
+
+  private conflictZoneForEntityId(id: string): ConflictZone | null {
+    if (!id.startsWith(CONFLICT_ENTITY_PREFIX)) return null;
+    const zoneId = id.slice(CONFLICT_ENTITY_PREFIX.length).split(':')[0];
+    return CONFLICT_ZONES.find((zone) => zone.id === zoneId) ?? null;
+  }
+
+  private screenPositionFor(lon: number, lat: number, fallback: { x: number; y: number }): { x: number; y: number } {
+    const transforms = this.cesium.SceneTransforms;
+    if (!transforms || !this.viewer) return fallback;
+    try {
+      return transforms.worldToWindowCoordinates(this.viewer.scene, this.cesium.Cartesian3.fromDegrees(lon, lat)) ?? fallback;
+    } catch {
+      return fallback;
+    }
+  }
+
+  private showConflictPopup(zone: ConflictZone, at: { x: number; y: number }): void {
+    if (!this.popup) return;
+    const { x, y } = this.screenPositionFor(zone.center[0], zone.center[1], at);
+    this.popup.show({ type: 'conflict', data: zone, x, y });
+    this.popup.loadConflictHistory?.(zone);
+  }
+
+  public triggerConflictClick(id: string): void {
+    const zone = CONFLICT_ZONES.find((candidate) => candidate.id === id);
+    if (!zone) return;
+    this.showConflictPopup(zone, { x: this.container.clientWidth / 2, y: this.container.clientHeight / 2 });
+  }
+
+  public setOnCountryClick(callback: (country: CountryClickPayload) => void): void { this.onCountryClick = callback; }
+
+  public fitCountry(code: string): void {
+    const bbox = (this.options.countryBbox ?? getCountryBbox)(code);
+    if (!bbox) return;
+    const [minLon, minLat, maxLon, maxLat] = bbox;
+    const span = Math.max(maxLat - minLat, maxLon - minLon);
+    // Geographic span → zoom, mirroring GlobeMap's altitude ladder.
+    const zoom = span > 60 ? 1.5 : span > 20 ? 3 : span > 8 ? 4 : span > 3 ? 5.5 : 7;
+    this.applyCenter((minLat + maxLat) / 2, (minLon + maxLon) / 2, zoom);
+  }
+
+  public highlightCountry(code: string): void {
+    this.clearCountryHighlight();
+    if (!this.viewer || !this.countriesGeoData) return;
+    const upper = code.toUpperCase();
+    const feature = this.countriesGeoData.features.find((f) => f.properties?.['ISO3166-1-Alpha-2'] === upper);
+    if (!feature?.geometry) return;
+    polygonRingSets(feature.geometry).forEach((rings, index) => {
+      const outer = rings[0];
+      if (!outer || outer.length < 3) return;
+      const id = `${HIGHLIGHT_ENTITY_PREFIX}${upper}:${index}`;
+      this.viewer!.entities.add({
+        id,
+        polyline: { positions: this.ringToPositions(outer), width: 3, material: this.cesium.Color.fromCssColorString(COUNTRY_HIGHLIGHT_STROKE), clampToGround: true },
+      });
+      this.entityIds.add(id);
+    });
+    this.viewer.scene.requestRender?.();
+  }
+
+  public clearCountryHighlight(): void {
+    this.removeEntitiesWithPrefix(HIGHLIGHT_ENTITY_PREFIX);
+    this.viewer?.scene.requestRender?.();
   }
 
   private async activateKeylessBasemap(): Promise<void> {
@@ -405,11 +638,21 @@ export class CesiumMapAdapter {
     const lat = this.cesium.Math.toDegrees(cartographic.latitude);
     const lon = this.cesium.Math.toDegrees(cartographic.longitude);
     if (contextMenu) {
-      this.onContextMenu?.({ lat, lon, screenX: position.x, screenY: position.y });
+      const country = (this.options.countryAt ?? getCountryAtCoordinates)(lat, lon);
+      this.onContextMenu?.({ lat, lon, screenX: position.x, screenY: position.y, countryCode: country?.code, countryName: country?.name });
       return;
     }
-    // This adapter has no country boundary entity/source. Point entities are
-    // data markers, so their picks must not become country clicks.
+    const pickedId = this.viewer.scene.pick?.(position)?.id?.id;
+    if (pickedId) {
+      const zone = this.conflictZoneForEntityId(pickedId);
+      if (zone) { this.showConflictPopup(zone, position); return; }
+      // Other picked entities are data markers; their picks are not country clicks.
+      return;
+    }
+    // Bare globe click: resolve the country from the same local geometry the 2D
+    // renderers use, so the dashboard's country workflow works in 3D too.
+    const country = (this.options.countryAt ?? getCountryAtCoordinates)(lat, lon);
+    this.onCountryClick?.({ lat, lon, code: country?.code, name: country?.name });
   }
 
   private applyCamera(view: MapView, zoom: number, _panX = 0, _panY = 0): void {
@@ -467,7 +710,9 @@ export class CesiumMapAdapter {
   public setTimeRange(range: TimeRange): void { this.state = { ...this.state, timeRange: range }; this.onTimeRange?.(range); }
   public getTimeRange(): TimeRange { return this.state.timeRange; }
   public setLayers(layers: MapLayers): void {
+    const conflictsChanged = (this.state.layers.conflicts === true) !== (layers.conflicts === true);
     this.state = { ...this.state, layers: { ...layers } };
+    if (conflictsChanged) this.renderConflictZones();
     for (const [prefix, layer] of Object.entries({ earthquake: 'natural', natural: 'natural', protest: 'protests', weather: 'weather' } as Record<string, keyof MapLayers>)) {
       const ids = [...this.entityIds].filter((id) => id.startsWith(`${prefix}:`));
       if (this.state.layers[layer] === true) {
@@ -483,7 +728,6 @@ export class CesiumMapAdapter {
   public onStateChanged(callback: (state: MapContainerState) => void): void { this.onState = callback; }
   public onTimeRangeChanged(callback: (range: TimeRange) => void): void { this.onTimeRange = callback; }
   public setOnLayerChange(_callback: (layer: keyof MapLayers, enabled: boolean, source: 'user' | 'programmatic') => void): void { /* No interactive layer toggles in this spike. */ }
-  public setOnCountryClick(_callback: (country: CountryClickPayload) => void): void { /* No country boundary data is available in this adapter. */ }
   public setOnMapContextMenu(callback: (payload: { lat: number; lon: number; screenX: number; screenY: number; countryCode?: string; countryName?: string }) => void): void { this.onContextMenu = callback; }
   public setOnHotspotClick(_callback: (hotspot: Hotspot) => void): void { /* Hotspot data is unsupported in this spike. */ }
   public setOnAircraftPositionsUpdate(_callback: (positions: never[]) => void): void { /* Aircraft data is unsupported in this spike. */ }
@@ -519,6 +763,7 @@ export class CesiumMapAdapter {
   public setLayerReady(_layer: keyof MapLayers, _hasData: boolean): void { /* Point setters own readiness in this spike. */ }
   public getLayerStatus(layer: keyof MapLayers): 'rendered' | 'unsupported' {
     if (!(CESIUM_SPIKE_LIMITATIONS.renderedLayers as readonly string[]).includes(layer)) return 'unsupported';
+    if (layer === 'conflicts') return this.viewer && this.state.layers.conflicts === true && this.getConflictEntityIds().length > 0 ? 'rendered' : 'unsupported';
     const prefix = ({ earthquakes: 'earthquake', natural: 'natural', protests: 'protest', weather: 'weather', flash: 'flash' } as Record<string, string>)[layer] ?? '';
     return this.viewer && this.state.layers[layer] === true && (this.pendingPointSets.get(prefix)?.points.length ?? 0) > 0 && [...this.entityIds].some((id) => id.startsWith(`${prefix}:`)) ? 'rendered' : 'unsupported';
   }
@@ -547,11 +792,15 @@ export class CesiumMapAdapter {
     this.viewer?.destroy();
     this.viewer = null;
     this.entityIds.clear();
+    try { this.popup?.hide(); } catch { /* popup DOM is discarded with the container */ }
+    this.popup = null;
+    this.countriesGeoData = null;
     this.container.textContent = '';
     this.container.classList.remove('cesium-map-adapter', 'globe-mode');
     this.onState = null;
     this.onTimeRange = null;
     this.onContextMenu = null;
+    this.onCountryClick = null;
   }
 }
 

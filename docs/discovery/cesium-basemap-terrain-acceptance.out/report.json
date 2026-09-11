@@ -1,6 +1,6 @@
 {
   "url": "http://127.0.0.1:4200/?cesiumSpike=1&lat=32&lon=53&zoom=4",
-  "startedAt": "2026-09-11T17:12:16.569Z",
+  "startedAt": "2026-09-11T17:23:51.188Z",
   "steps": [
     {
       "name": "adapter-status",
@@ -22,12 +22,12 @@
     {
       "name": "overhead-settle",
       "tilesLoaded": true,
-      "renders": 12
+      "renders": 10
     },
     {
       "name": "oblique-settle",
       "tilesLoaded": true,
-      "renders": 9
+      "renders": 10
     },
     {
       "name": "terrain-heights",
@@ -70,5 +70,5 @@
   ],
   "pass": true,
   "pageErrors": [],
-  "finishedAt": "2026-09-11T17:12:19.682Z"
+  "finishedAt": "2026-09-11T17:23:54.243Z"
 }

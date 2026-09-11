@@ -64,11 +64,19 @@ function fakeCesium(options: { esriFails?: boolean; terrainFails?: boolean } = {
   };
   const dependency = {
     Viewer: vi.fn(() => viewer),
-    Cartesian3: { fromDegrees: vi.fn((lon: number, lat: number, height?: number) => ({ lon, lat, height })) },
+    Cartesian3: {
+      fromDegrees: vi.fn((lon: number, lat: number, height?: number) => ({ lon, lat, height })),
+      fromDegreesArray: vi.fn((flat: number[]) => { const out: Array<{ lon: number; lat: number }> = []; for (let i = 0; i < flat.length; i += 2) out.push({ lon: flat[i]!, lat: flat[i + 1]! }); return out; }),
+    },
     Cartographic: { fromCartesian: (position: { longitude: number; latitude: number }) => position },
     Math: { toDegrees: (value: number) => value, toRadians: (value: number) => value },
-    Color: { CYAN: 'cyan', ORANGE: 'orange', RED: 'red', YELLOW: 'yellow' },
+    Color: { CYAN: 'cyan', ORANGE: 'orange', RED: 'red', YELLOW: 'yellow', fromCssColorString: (css: string) => `css(${css})` },
     ScreenSpaceEventType: { LEFT_CLICK: 'left', RIGHT_CLICK: 'right' },
+    PolygonHierarchy: class { constructor(public positions: unknown[], public holes: unknown[] = []) {} },
+    ClassificationType: { TERRAIN: 'terrain' },
+    VerticalOrigin: { BOTTOM: 'bottom' },
+    LabelStyle: { FILL_AND_OUTLINE: 'fill-outline' },
+    HeightReference: { CLAMP_TO_GROUND: 'clamp' },
     EllipsoidTerrainProvider: class {},
     OpenStreetMapImageryProvider: class {
       kind = 'osm';
@@ -110,6 +118,7 @@ describe('CesiumMapAdapter spike', () => {
       chrome: false,
       onInitError: vi.fn(),
       cesium: fake.dependency,
+      loadCountries: async () => null,
       createViewer: () => fake.viewer,
     });
 
@@ -127,6 +136,7 @@ describe('CesiumMapAdapter spike', () => {
       chrome: false,
       onInitError: vi.fn(),
       cesium: fake.dependency,
+      loadCountries: async () => null,
       createViewer: () => fake.viewer,
       enableKeylessBasemap: true,
     });
@@ -150,6 +160,7 @@ describe('CesiumMapAdapter spike', () => {
       chrome: false,
       onInitError,
       cesium: fake.dependency,
+      loadCountries: async () => null,
       createViewer: () => fake.viewer,
       enableKeylessBasemap: true,
     });
@@ -171,6 +182,7 @@ describe('CesiumMapAdapter spike', () => {
       chrome: false,
       onInitError: vi.fn(),
       cesium: fake.dependency,
+      loadCountries: async () => null,
       createViewer: () => fake.viewer,
       enableKeylessBasemap: true,
     });
@@ -198,6 +210,7 @@ describe('CesiumMapAdapter spike', () => {
       chrome: false,
       onInitError: vi.fn(),
       cesium: fake.dependency,
+      loadCountries: async () => null,
       createViewer: () => fake.viewer,
       enableKeylessBasemap: true,
       basemap: 'osm',
@@ -214,6 +227,7 @@ describe('CesiumMapAdapter spike', () => {
       chrome: false,
       onInitError: vi.fn(),
       cesium: fake.dependency,
+      loadCountries: async () => null,
       createViewer: () => fake.viewer,
       enableKeylessBasemap: true,
     });
@@ -234,6 +248,7 @@ describe('CesiumMapAdapter spike', () => {
       chrome: false,
       onInitError,
       cesium: fake.dependency,
+      loadCountries: async () => null,
       createViewer: () => fake.viewer,
       enableKeylessBasemap: true,
     });
@@ -253,6 +268,7 @@ describe('CesiumMapAdapter spike', () => {
       chrome: false,
       onInitError: vi.fn(),
       cesium: fake.dependency,
+      loadCountries: async () => null,
       createViewer: () => fake.viewer,
       enableKeylessBasemap: true,
       enableKeylessTerrain: false,
@@ -271,6 +287,7 @@ describe('CesiumMapAdapter spike', () => {
       chrome: false,
       onInitError: vi.fn(),
       cesium: fake.dependency,
+      loadCountries: async () => null,
       createViewer,
     });
 
@@ -294,6 +311,7 @@ describe('CesiumMapAdapter spike', () => {
       chrome: false,
       onInitError: vi.fn(),
       cesium: fake.dependency,
+      loadCountries: async () => null,
       createViewer: () => fake.viewer,
     });
     adapter.setNaturalEvents([{ id: 'queued', title: 'Queued', category: 'earthquakes', categoryTitle: 'Other', lat: 3, lon: 4, date: new Date(), closed: false }]);
@@ -317,6 +335,7 @@ describe('CesiumMapAdapter spike', () => {
       chrome: false,
       onInitError: vi.fn(),
       cesium: fake.dependency,
+      loadCountries: async () => null,
       createViewer: () => fake.viewer,
     });
     await adapter.whenReady();
@@ -333,6 +352,7 @@ describe('CesiumMapAdapter spike', () => {
       chrome: false,
       onInitError: vi.fn(),
       cesium: fake.dependency,
+      loadCountries: async () => null,
       createViewer: () => fake.viewer,
     });
     const onCountryClick = vi.fn();
@@ -353,6 +373,7 @@ describe('CesiumMapAdapter spike', () => {
       chrome: false,
       onInitError: vi.fn(),
       cesium: fake.dependency,
+      loadCountries: async () => null,
       createViewer: () => fake.viewer,
     });
     const onState = vi.fn();
@@ -373,6 +394,7 @@ describe('CesiumMapAdapter spike', () => {
       chrome: false,
       onInitError: vi.fn(),
       cesium: fake.dependency,
+      loadCountries: async () => null,
       createViewer: () => fake.viewer,
     });
     await adapter.whenReady();
@@ -385,6 +407,128 @@ describe('CesiumMapAdapter spike', () => {
     expect(CESIUM_SPIKE_LIMITATIONS.unsupportedLayers).toMatch('state');
     expect(adapter.getLayerStatus('natural')).toBe('rendered');
     expect(adapter.getLayerStatus('conflicts')).toBe('unsupported');
+  });
+
+  describe('conflict zones and country boundaries', () => {
+    // A tiny stand-in for /data/countries.geojson: Iran as a square with a hole,
+    // plus an unrelated neighbour. The resolver only needs ISO codes + geometry.
+    const IRAN_OUTER = [[44, 25], [63, 25], [63, 40], [44, 40], [44, 25]];
+    const IRAN_HOLE = [[50, 30], [52, 30], [52, 32], [50, 32], [50, 30]];
+    const countries = {
+      type: 'FeatureCollection',
+      features: [
+        { type: 'Feature', properties: { name: 'Iran', 'ISO3166-1-Alpha-2': 'IR', 'ISO3166-1-Alpha-3': 'IRN' }, geometry: { type: 'Polygon', coordinates: [IRAN_OUTER, IRAN_HOLE] } },
+        { type: 'Feature', properties: { name: 'Oman', 'ISO3166-1-Alpha-2': 'OM', 'ISO3166-1-Alpha-3': 'OMN' }, geometry: { type: 'Polygon', coordinates: [[[52, 17], [60, 17], [60, 24], [52, 24], [52, 17]]] } },
+      ],
+    } as unknown as import('geojson').FeatureCollection;
+    const countryAt = (lat: number, lon: number) => (lon >= 44 && lon <= 63 && lat >= 25 && lat <= 40 ? { code: 'IR', name: 'Iran' } : null);
+    const popup = () => ({ show: vi.fn(), loadConflictHistory: vi.fn(), hide: vi.fn() });
+
+    function build(fake: ReturnType<typeof fakeCesium>, overrides: Partial<ConstructorParameters<typeof CesiumMapAdapter>[2]> = {}, layers: Partial<MapLayers> = {}) {
+      const p = popup();
+      const adapter = new CesiumMapAdapter(document.createElement('div'), { ...state(), layers: { ...state().layers, conflicts: true, ...layers } as MapLayers }, {
+        chrome: false,
+        onInitError: vi.fn(),
+        cesium: fake.dependency,
+        createViewer: () => fake.viewer,
+        loadCountries: async () => countries,
+        countryAt,
+        countryBbox: (code) => (code === 'IR' ? [44, 25, 63, 40] : null),
+        createPopup: () => p,
+        ...overrides,
+      });
+      return { adapter, popup: p };
+    }
+
+    it('draws country-mapped zones from the canonical country geometry, with holes, on the terrain', async () => {
+      const fake = fakeCesium();
+      const { adapter } = build(fake);
+      await adapter.whenReady();
+      await adapter.whenCountriesSettled();
+
+      const iran = fake.entities.get('conflict:iran:IR:0') as { polygon: { hierarchy: { positions: unknown[]; holes: Array<{ positions: unknown[] }> }; material: string; classificationType: string } };
+      expect(iran).toBeDefined();
+      expect(iran.polygon.hierarchy.positions).toHaveLength(IRAN_OUTER.length);
+      expect(iran.polygon.hierarchy.holes).toHaveLength(1);
+      expect(iran.polygon.hierarchy.holes[0]?.positions).toHaveLength(IRAN_HOLE.length);
+      expect(iran.polygon.classificationType).toBe('terrain');
+      expect(iran.polygon.material).toBe('css(rgba(255,40,40,0.25))');
+      // Ground polygons carry no outline in Cesium, so the border is a clamped polyline.
+      const stroke = fake.entities.get('conflict:iran:IR:0:stroke') as { polyline: { clampToGround: boolean; material: string } };
+      expect(stroke.polyline.clampToGround).toBe(true);
+      expect(stroke.polyline.material).toBe('css(#ff3030)');
+      expect(adapter.getLayerStatus('conflicts')).toBe('rendered');
+    });
+
+    it('never fabricates a national border for a country-mapped zone when geometry is missing', async () => {
+      const fake = fakeCesium();
+      const { adapter } = build(fake, { loadCountries: async () => null });
+      await adapter.whenReady();
+      await adapter.whenCountriesSettled();
+
+      expect(adapter.getConflictEntityIds().some((id) => id.startsWith('conflict:iran:'))).toBe(false);
+      // Regional zones keep their configured approximate polygon and are labelled as such.
+      const regional = adapter.getConflictEntityIds().filter((id) => id.includes(':regional:'));
+      expect(regional.length).toBeGreaterThan(0);
+      const label = [...fake.entities.values()].find((e) => typeof e.id === 'string' && e.id.endsWith(':label')) as { label: { text: string; fillColor: string } } | undefined;
+      expect(label?.label.text).toMatch(/approximate conflict area/);
+      expect(label?.label.fillColor).toBe('css(#ff9600)');
+    });
+
+    it('removes and restores conflict entities with the layer toggle', async () => {
+      const fake = fakeCesium();
+      const { adapter } = build(fake);
+      await adapter.whenReady();
+      await adapter.whenCountriesSettled();
+      expect(adapter.getConflictEntityIds().length).toBeGreaterThan(0);
+
+      adapter.setLayers({ ...state().layers, conflicts: false } as MapLayers);
+      expect(adapter.getConflictEntityIds()).toHaveLength(0);
+      expect(adapter.getLayerStatus('conflicts')).toBe('unsupported');
+
+      adapter.setLayers({ ...state().layers, conflicts: true } as MapLayers);
+      expect(fake.entities.has('conflict:iran:IR:0')).toBe(true);
+    });
+
+    it('resolves bare globe clicks to a country and conflict picks to the shared popup', async () => {
+      const fake = fakeCesium();
+      const { adapter, popup: p } = build(fake);
+      const onCountryClick = vi.fn();
+      adapter.setOnCountryClick(onCountryClick);
+      await adapter.whenReady();
+      await adapter.whenCountriesSettled();
+      const leftClick = fake.handler.setInputAction.mock.calls.find(([, type]) => type === 'left')?.[0] as ((movement: { position: { x: number; y: number } }) => void);
+
+      fake.camera.pickEllipsoid = vi.fn(() => ({ longitude: 53, latitude: 32 }));
+      fake.viewer.scene.pick = vi.fn(() => undefined);
+      leftClick({ position: { x: 5, y: 6 } });
+      expect(onCountryClick).toHaveBeenCalledWith({ lat: 32, lon: 53, code: 'IR', name: 'Iran' });
+
+      fake.viewer.scene.pick = vi.fn(() => ({ id: { id: 'conflict:iran:IR:0' } }));
+      leftClick({ position: { x: 7, y: 8 } });
+      expect(p.show).toHaveBeenCalledWith(expect.objectContaining({ type: 'conflict', data: expect.objectContaining({ id: 'iran' }) }));
+      expect(p.loadConflictHistory).toHaveBeenCalledOnce();
+      expect(onCountryClick).toHaveBeenCalledOnce();
+    });
+
+    it('supports fitCountry and a removable country highlight outline', async () => {
+      const fake = fakeCesium();
+      const { adapter } = build(fake);
+      await adapter.whenReady();
+      await adapter.whenCountriesSettled();
+
+      adapter.fitCountry('IR');
+      expect(fake.camera.setView).toHaveBeenLastCalledWith({ destination: { lon: 53.5, lat: 32.5, height: expect.any(Number) } });
+      expect(adapter.getCenter()).toEqual({ lat: 32.5, lon: 53.5 });
+      adapter.fitCountry('ZZ');
+
+      adapter.highlightCountry('ir');
+      const highlight = fake.entities.get('country-highlight:IR:0') as { polyline: { positions: unknown[]; clampToGround: boolean } };
+      expect(highlight.polyline.positions).toHaveLength(IRAN_OUTER.length);
+      expect(highlight.polyline.clampToGround).toBe(true);
+      adapter.clearCountryHighlight();
+      expect(fake.entities.has('country-highlight:IR:0')).toBe(false);
+    });
   });
 
   it('normalizes antimeridian and latitude bounds deterministically', () => {
