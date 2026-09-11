@@ -23,6 +23,12 @@ export const RELAY_URL = `ws://${RELAY_HOST}:${RELAY_PORT}`;
 // the relay's aircraft route runs authenticated (anonymous OpenSky is limited to
 // 400 requests/day and is exhausted quickly by a live dashboard).
 const OPENSKY_ENV_NAMES = ['OPENSKY_CLIENT_ID', 'OPENSKY_CLIENT_SECRET', 'OPENSKY_AUTH_MODE'];
+// Optional: forward the LLM route from the same env file (--with-llm). Only the
+// OpenRouter key and the LLM_* / OPENROUTER_FREE_* / FORECAST_LLM_* routing
+// knobs are read; the private build is expected to set LLM_FREE_ONLY=1 so no
+// paid model is ever requested.
+const LLM_ENV_PREFIXES = ['LLM_', 'OPENROUTER_FREE_', 'FORECAST_LLM_'];
+const LLM_ENV_NAMES = ['OPENROUTER_API_KEY', 'AI_DIGEST_ENABLED', 'AI_IMPACT_ENABLED'];
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(SCRIPT_DIR, '..');
@@ -49,19 +55,20 @@ export function readArgs(argv) {
   const index = argv.indexOf('--env');
   const envPath = index >= 0 ? argv[index + 1] : undefined;
   if (!envPath || envPath.startsWith('-')) {
-    throw new Error('Usage: node scripts/local-ais-preview.mjs --env <original GEV .env path> [--with-opensky]');
+    throw new Error('Usage: node scripts/local-ais-preview.mjs --env <original GEV .env path> [--with-opensky] [--with-llm]');
   }
-  return { envPath: resolve(envPath), withOpenSky: argv.includes('--with-opensky') };
+  return { envPath: resolve(envPath), withOpenSky: argv.includes('--with-opensky'), withLlm: argv.includes('--with-llm') };
 }
 
 /**
  * Read only the named keys from the explicit env file. Inherited values never
  * satisfy the read; nothing is printed or written.
  */
-export function loadKeys(envPath, { withOpenSky = false } = {}) {
+export function loadKeys(envPath, { withOpenSky = false, withLlm = false } = {}) {
   if (!existsSync(envPath)) throw new Error(`Environment file not found: ${envPath}`);
-  const wanted = ['AISSTREAM_API_KEY', ...(withOpenSky ? OPENSKY_ENV_NAMES : [])];
+  const wanted = ['AISSTREAM_API_KEY', ...(withOpenSky ? OPENSKY_ENV_NAMES : []), ...(withLlm ? LLM_ENV_NAMES : [])];
   for (const name of [...wanted, 'VITE_AISSTREAM_API_KEY']) delete process.env[name];
+  if (withLlm) for (const name of Object.keys(process.env)) if (LLM_ENV_PREFIXES.some((p) => name.startsWith(p))) delete process.env[name];
   loadEnvFile(envPath);
   const key = process.env.AISSTREAM_API_KEY;
   if (!key) throw new Error('AISSTREAM_API_KEY is missing from the supplied environment file');
@@ -70,7 +77,13 @@ export function loadKeys(envPath, { withOpenSky = false } = {}) {
     for (const name of OPENSKY_ENV_NAMES) if (process.env[name]) openSky[name] = process.env[name];
     if (!openSky.OPENSKY_CLIENT_ID || !openSky.OPENSKY_CLIENT_SECRET) throw new Error('--with-opensky requires OPENSKY_CLIENT_ID and OPENSKY_CLIENT_SECRET in the supplied environment file');
   }
-  return { aisKey: key, openSky };
+  const llm = {};
+  if (withLlm) {
+    for (const name of LLM_ENV_NAMES) if (process.env[name]) llm[name] = process.env[name];
+    for (const name of Object.keys(process.env)) if (LLM_ENV_PREFIXES.some((p) => name.startsWith(p)) && process.env[name]) llm[name] = process.env[name];
+    if (!llm.OPENROUTER_API_KEY) throw new Error('--with-llm requires OPENROUTER_API_KEY in the supplied environment file');
+  }
+  return { aisKey: key, openSky, llm };
 }
 
 function start(command, args, env) {
@@ -83,8 +96,8 @@ function start(command, args, env) {
 }
 
 async function main() {
-  const { envPath, withOpenSky } = readArgs(process.argv.slice(2));
-  const { aisKey, openSky } = loadKeys(envPath, { withOpenSky });
+  const { envPath, withOpenSky, withLlm } = readArgs(process.argv.slice(2));
+  const { aisKey, openSky, llm } = loadKeys(envPath, { withOpenSky, withLlm });
   const relaySecret = randomBytes(32).toString('hex');
   const common = {
     HOST: RELAY_HOST,
@@ -93,8 +106,8 @@ async function main() {
     VITE_WS_RELAY_URL: RELAY_URL,
     WM_SKIP_DOTENV: '1',
   };
-  const relayEnv = isolatedEnv({ ...common, ...openSky, PORT: String(RELAY_PORT), AISSTREAM_API_KEY: aisKey, RELAY_TEST_MODE: 'true' });
-  const viteEnv = isolatedEnv({ ...common, PORT: String(PREVIEW_PORT), VITE_VARIANT: 'full', VITE_PRIVATE_WORKSPACE: '1' });
+  const relayEnv = isolatedEnv({ ...common, ...openSky, ...llm, PORT: String(RELAY_PORT), AISSTREAM_API_KEY: aisKey, RELAY_TEST_MODE: 'true' });
+  const viteEnv = isolatedEnv({ ...common, ...llm, PORT: String(PREVIEW_PORT), VITE_VARIANT: 'full', VITE_PRIVATE_WORKSPACE: '1' });
 
   const relay = start(RELAY_SCRIPT, [], relayEnv);
   let preview;

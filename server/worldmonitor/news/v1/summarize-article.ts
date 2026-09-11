@@ -25,6 +25,7 @@ import {
   setResponseHeader,
 } from '../../../_shared/response-headers';
 import { stripThinkingTags } from '../../../_shared/llm';
+import { getOpenRouterFreePool, isFreeModelCooling, isFreePoolEnabled, recordFreeModelFailure, recordFreeModelSuccess } from '../../../_shared/openrouter-free-pool';
 import { buildLlmCallEvent, deliverUsageEvents } from '../../../_shared/usage';
 
 // Best-effort llm_call telemetry (#4895). This handler bypasses callLlm (the
@@ -174,7 +175,7 @@ export async function summarizeArticle(
     };
   }
 
-  const { apiUrl, model, headers: providerHeaders, extraBody } = credentials;
+  const { apiUrl, model: credentialModel, headers: providerHeaders, extraBody } = credentials;
 
   // Request validation
   if (!headlines || !Array.isArray(headlines) || headlines.length === 0) {
@@ -274,32 +275,49 @@ export async function summarizeArticle(
           ? `${systemPrompt}\n\n---\n\n${sanitizedAppend}`
           : systemPrompt;
 
-        const llmStartMs = Date.now();
         const llmPromptChars = effectiveSystemPrompt.length + userPrompt.length;
-        const response = await fetch(apiUrl, {
-          method: 'POST',
-          headers: { ...providerHeaders, 'User-Agent': CHROME_UA },
-          body: JSON.stringify({
-            model,
-            messages: [
-              { role: 'system', content: effectiveSystemPrompt },
-              { role: 'user', content: userPrompt },
-            ],
-            temperature: 0.3,
-            max_tokens: 100,
-            top_p: 0.9,
-            ...extraBody,
-          }),
-          signal: AbortSignal.timeout(25_000),
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error(`[SummarizeArticle:${provider}] API error:`, response.status, errorText);
-          recordModelFailure(apiUrl, model, response.status, errorText);
-          await emitSummarizeLlmEvent({ provider, model, ok: false, durationMs: Date.now() - llmStartMs, promptChars: llmPromptChars, reason: `http_${response.status}` });
-          throw new Error(response.status === 429 ? 'Rate limited' : `${provider} API error`);
+        // Free-pool cycling (LLM_FREE_POOL=1, OpenRouter): try the discovered
+        // free models in order, skipping ones cooling down after a 429/5xx/404.
+        // Everything else keeps the single credential model.
+        const candidateModels = provider === 'openrouter' && isFreePoolEnabled()
+          ? (await getOpenRouterFreePool(credentialModel)).filter((m) => !isFreeModelCooling(m)).slice(0, 4)
+          : [credentialModel];
+        if (candidateModels.length === 0) candidateModels.push(credentialModel);
+        let model = credentialModel;
+        let response: Response | null = null;
+        let llmStartMs = Date.now();
+        let lastStatus = 0;
+        for (const candidate of candidateModels) {
+          model = candidate;
+          llmStartMs = Date.now();
+          const attempt = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { ...providerHeaders, 'User-Agent': CHROME_UA },
+            body: JSON.stringify({
+              model,
+              messages: [
+                { role: 'system', content: effectiveSystemPrompt },
+                { role: 'user', content: userPrompt },
+              ],
+              temperature: 0.3,
+              max_tokens: 100,
+              top_p: 0.9,
+              ...extraBody,
+            }),
+            signal: AbortSignal.timeout(25_000),
+          });
+          if (attempt.ok) { response = attempt; break; }
+          lastStatus = attempt.status;
+          const errorText = await attempt.text();
+          console.error(`[SummarizeArticle:${provider}] API error:`, attempt.status, `model=${model}`, errorText);
+          recordModelFailure(apiUrl, model, attempt.status, errorText);
+          if (candidateModels.length > 1) recordFreeModelFailure(model, attempt.status);
+          await emitSummarizeLlmEvent({ provider, model, ok: false, durationMs: Date.now() - llmStartMs, promptChars: llmPromptChars, reason: `http_${attempt.status}` });
         }
+        if (!response) {
+          throw new Error(lastStatus === 429 ? 'Rate limited' : `${provider} API error`);
+        }
+        if (candidateModels.length > 1) recordFreeModelSuccess(model);
 
         // HTTP success proves provider/model compatibility. Summary validation
         // below is an application-level concern and must not preserve a stale
@@ -333,9 +351,9 @@ export async function summarizeArticle(
         // This cache key is intentionally provider-independent so a successful
         // summary can be reused across the client fallback chain. Provider-
         // local failures and in-flight work must not suppress another provider.
-        shouldFetch: () => isModelUsable(apiUrl, model),
+        shouldFetch: () => isModelUsable(apiUrl, credentialModel),
         cacheFailures: false,
-        inflightKey: `${cacheKey}:${provider}:${model}`,
+        inflightKey: `${cacheKey}:${provider}:${credentialModel}`,
       },
     );
 
@@ -343,7 +361,7 @@ export async function summarizeArticle(
       const isCached = source === 'cache';
       return {
         summary: result.summary,
-        model: result.model || model,
+        model: result.model || credentialModel,
         provider: isCached ? 'cache' : provider,
         tokens: isCached ? 0 : (result.tokens || 0),
         fallback: false,

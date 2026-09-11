@@ -13,6 +13,7 @@ import {
 } from '../../scripts/_llm-model-timeouts.mjs';
 
 export { getLlmAttemptTimeoutMs } from '../../scripts/_llm-model-timeouts.mjs';
+import { DEFAULT_FREE_POOL_ATTEMPTS, getOpenRouterFreePool, isFreeModelCooling, isFreePoolEnabled, recordFreeModelFailure, recordFreeModelSuccess } from './openrouter-free-pool';
 
 function promptChars(messages: Array<{ role: string; content: string }>): number {
   return messages.reduce((sum, m) => sum + (m.content?.length ?? 0), 0);
@@ -131,9 +132,16 @@ export function getProviderCredentials(
   if (typeof openRouterDefaultModel === 'string') {
     const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) return null;
+    // LLM_FREE_ONLY=1: the paid `openrouter` rung must never request its paid
+    // default model (a free-tier key answers 402). Direct callers such as the
+    // article summarizer resolve credentials by provider name rather than
+    // through the chain, so the remap has to live here.
+    const freeOnlyModel = provider === 'openrouter' && isFreeOnly() && !overrides.model
+      ? OPENROUTER_DEFAULT_MODELS['openrouter-free']
+      : null;
     return {
       apiUrl: 'https://openrouter.ai/api/v1/chat/completions',
-      model: overrides.model || openRouterDefaultModel,
+      model: overrides.model || freeOnlyModel || openRouterDefaultModel,
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
@@ -230,6 +238,38 @@ function isOpenRouterProvider(provider: string): boolean {
     || provider === 'openrouter-free-backup';
 }
 
+interface LlmAttempt {
+  providerName: string;
+  /** Model to use for this attempt; undefined means the provider default / profile override. */
+  model?: string;
+  /** True when the model came from the discovered free pool (cooldown bookkeeping applies). */
+  fromFreePool?: boolean;
+}
+
+/**
+ * Expand the provider chain into concrete attempts. With LLM_FREE_POOL=1 the
+ * `openrouter-free` rung becomes up to DEFAULT_FREE_POOL_ATTEMPTS attempts over
+ * the discovered free catalogue (owner instruction: use any/all free OpenRouter
+ * models, cycle as needed); `openrouter-free-backup` is then redundant and
+ * dropped. Models cooling down after a 429/5xx/404 are skipped this call.
+ */
+async function expandAttempts(
+  providers: readonly string[],
+  modelOverrides: Partial<Record<LlmProviderName, string>> | undefined,
+): Promise<LlmAttempt[]> {
+  if (!isFreePoolEnabled()) return providers.map((providerName) => ({ providerName }));
+  const attempts: LlmAttempt[] = [];
+  for (const providerName of providers) {
+    if (providerName === 'openrouter-free-backup') continue;
+    if (providerName !== 'openrouter-free') { attempts.push({ providerName }); continue; }
+    const pool = await getOpenRouterFreePool(modelOverrides?.['openrouter-free']);
+    const usable = pool.filter((model) => !isFreeModelCooling(model)).slice(0, DEFAULT_FREE_POOL_ATTEMPTS);
+    if (usable.length === 0) { attempts.push({ providerName }); continue; }
+    for (const model of usable) attempts.push({ providerName, model, fromFreePool: true });
+  }
+  return attempts;
+}
+
 export interface LlmCallOptions {
   messages: Array<{ role: string; content: string }>;
   temperature?: number;
@@ -303,13 +343,29 @@ function isLengthLimitedCompletion(
   return normalized === null || !KNOWN_NON_LIMIT_FINISH_REASONS.has(normalized);
 }
 
+/**
+ * LLM_FREE_ONLY=1 removes the paid OpenRouter rung from every chain. The
+ * private/personal build runs on an OpenRouter free-tier key: a paid model
+ * would answer 402 on every call and waste the attempt budget before the
+ * free legs run. Forced providers are still honoured.
+ */
+function isFreeOnly(): boolean {
+  return process.env.LLM_FREE_ONLY === '1';
+}
+
+function applyFreeOnly(providers: string[]): string[] {
+  if (!isFreeOnly()) return providers;
+  const filtered = providers.filter((p) => p !== 'openrouter');
+  return filtered.length > 0 ? filtered : providers;
+}
+
 function resolveProviderChain(opts: {
   forcedProvider?: string;
   providerOrder?: string[];
 }): string[] {
   if (opts.forcedProvider) return [opts.forcedProvider];
   if (!Array.isArray(opts.providerOrder) || opts.providerOrder.length === 0) {
-    return [...PROVIDER_CHAIN];
+    return applyFreeOnly([...PROVIDER_CHAIN]);
   }
 
   const seen = new Set<string>();
@@ -320,7 +376,7 @@ function resolveProviderChain(opts: {
     providers.push(provider);
   }
 
-  return providers.length > 0 ? providers : [...PROVIDER_CHAIN];
+  return applyFreeOnly(providers.length > 0 ? providers : [...PROVIDER_CHAIN]);
 }
 
 function callLlmProfile(
@@ -429,11 +485,13 @@ export function callLlmReasoningStream(opts: LlmStreamOptions): ReadableStream<U
         await flushLlmEvents(events);
       };
 
-      for (const providerName of providerOrder) {
+      const streamAttempts = await expandAttempts(providerOrder, modelOverrides);
+      for (const attempt of streamAttempts) {
         if (streamClosed) break;
+        const providerName = attempt.providerName;
 
         const creds = getProviderCredentials(providerName, {
-          model: modelOverrides?.[providerName as LlmProviderName],
+          model: attempt.model ?? modelOverrides?.[providerName as LlmProviderName],
           // Streaming variant of callLlmReasoning — the reasoning profile opts in.
           enableReasoning: true,
         });
@@ -495,6 +553,7 @@ export function callLlmReasoningStream(opts: LlmStreamOptions): ReadableStream<U
             // HTTP success proves the provider accepted this model even if the
             // application later rejects, strips, or cannot read the payload.
             recordModelSuccess(creds.apiUrl, creds.model);
+            if (attempt.fromFreePool) recordFreeModelSuccess(creds.model);
           }
 
           if (!resp.ok || !resp.body) {
@@ -504,6 +563,7 @@ export function callLlmReasoningStream(opts: LlmStreamOptions): ReadableStream<U
             // The body already told us whether the MODEL was rejected; feeding
             // it back is what stops the next request re-sending the prompt.
             recordModelFailure(creds.apiUrl, creds.model, resp.status, errBody);
+            if (attempt.fromFreePool) recordFreeModelFailure(creds.model, resp.status);
             record(false, `http_${resp.status}`);
             continue;
           }
@@ -609,12 +669,14 @@ export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult | nul
   let skipRemainingOpenRouter = false;
 
   try {
-    for (let providerIndex = 0; providerIndex < providers.length; providerIndex += 1) {
-      const providerName = providers[providerIndex]!;
+    const attempts = await expandAttempts(providers, modelOverrides);
+    for (let providerIndex = 0; providerIndex < attempts.length; providerIndex += 1) {
+      const attempt = attempts[providerIndex]!;
+      const providerName = attempt.providerName;
       if (skipRemainingOpenRouter && isOpenRouterProvider(providerName)) continue;
 
       const creds = getProviderCredentials(providerName, {
-        model: modelOverrides?.[providerName as LlmProviderName],
+        model: attempt.model ?? modelOverrides?.[providerName as LlmProviderName],
         enableReasoning,
       });
       if (!creds) {
@@ -644,9 +706,10 @@ export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult | nul
       // budget. The fixed free models share OpenRouter's control plane, so a
       // stalled OpenRouter completion must not consume Groq's reserve.
       const hasIndependentFallback = isOpenRouterProvider(providerName)
-        && providers.slice(providerIndex + 1).some((laterProvider) => {
+        && attempts.slice(providerIndex + 1).some((later) => {
+          const laterProvider = later.providerName;
           const laterCreds = getProviderCredentials(laterProvider, {
-            model: modelOverrides?.[laterProvider as LlmProviderName],
+            model: later.model ?? modelOverrides?.[laterProvider as LlmProviderName],
             enableReasoning,
           });
           return laterCreds !== null
@@ -715,6 +778,7 @@ export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult | nul
           // The body already told us whether the MODEL was rejected; feeding it
           // back is what stops the next request re-sending the prompt.
           recordModelFailure(creds.apiUrl, creds.model, resp.status, errBody);
+          if (attempt.fromFreePool) recordFreeModelFailure(creds.model, resp.status);
           record(false, { reason: `http_${resp.status}` });
           if (forcedProvider) return null;
           continue;
@@ -723,6 +787,7 @@ export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult | nul
         // Provider acceptance is the model-health signal. Output validation,
         // token limits, and content policy are separate application concerns.
         recordModelSuccess(creds.apiUrl, creds.model);
+        if (attempt.fromFreePool) recordFreeModelSuccess(creds.model);
 
         const data = (await resp.json()) as {
           choices?: Array<{ message?: { content?: string }; finish_reason?: string | null }>;

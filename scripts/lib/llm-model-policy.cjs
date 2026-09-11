@@ -1,6 +1,9 @@
 'use strict';
 
-const OPENROUTER_FREE_PRIMARY_MODEL = 'google/gemma-4-26b-a4b-it:free';
+// Both free legs are overridable from the environment so a deployment (or the
+// private build) can follow OpenRouter's rotating :free catalogue without a
+// code change. Values must be OpenRouter model ids ending in ':free'.
+const OPENROUTER_FREE_PRIMARY_MODEL = process.env.OPENROUTER_FREE_PRIMARY_MODEL || 'google/gemma-4-26b-a4b-it:free';
 // openai/gpt-oss-20b:free was delisted by OpenRouter — every call returned
 // HTTP 404, so the "backup" leg of the free chain had been dead weight for an
 // unknown span (observed during the 2026-08-28 newsInsights incident: the
@@ -13,7 +16,7 @@ const OPENROUTER_FREE_PRIMARY_MODEL = 'google/gemma-4-26b-a4b-it:free';
 // scrub — and the glm/gemma-31b candidates were themselves 429 at probe time.)
 // The Groq constant below is NOT the same model id: Groq still hosts
 // gpt-oss-20b natively; only OpenRouter's :free listing died.
-const OPENROUTER_FREE_BACKUP_MODEL = 'minimax/minimax-m3:free';
+const OPENROUTER_FREE_BACKUP_MODEL = process.env.OPENROUTER_FREE_BACKUP_MODEL || 'minimax/minimax-m3:free';
 const GROQ_DEFAULT_MODEL = 'openai/gpt-oss-20b';
 
 // Groq's `openai/gpt-oss-*` are REASONING models. Left at their defaults they

@@ -273,6 +273,14 @@ export async function resolvePremiumCallerIdentity(request: Request): Promise<Pr
     // information leak about the nonce.
   }
 
+  // Private/personal build (local dev server started by the AIS preview
+  // launcher with VITE_PRIVATE_WORKSPACE=1): the only caller is the owner, so
+  // every premium RPC is granted. The flag is never set on hosted deployments;
+  // it mirrors the private-preview gates in list-military-flights.ts.
+  if (process.env.VITE_PRIVATE_WORKSPACE === '1') {
+    return { isPremium: true, userId: null, kind: 'enterprise', quotaExempt: true };
+  }
+
   // Browser tester keys — validateApiKey returns required:false for trusted origins
   // even when a valid key is present, so we check the header directly first.
   const wmKey =
