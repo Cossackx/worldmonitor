@@ -15,6 +15,7 @@
  */
 
 import Globe from 'globe.gl';
+import { PRIVATE_WORKSPACE_ENABLED, shouldRenderHostedBranding } from '@/config/private-workspace';
 import { isDesktopRuntime } from '@/services/runtime';
 import type { GlobeInstance, ConfigOptions } from 'globe.gl';
 import { INTEL_HOTSPOTS, CONFLICT_ZONES, STRATEGIC_WATERWAYS } from '@/config/geo';
@@ -2028,10 +2029,12 @@ export class GlobeMap {
           </div>`;
         }).join('')}
       </div>`, "legacy direct innerHTML migration"));
-    const authorBadge = document.createElement('div');
-    authorBadge.className = 'map-author-badge';
-    authorBadge.textContent = '© Elie Habib · Someone™';
-    el.appendChild(authorBadge);
+    if (shouldRenderHostedBranding(PRIVATE_WORKSPACE_ENABLED)) {
+      const authorBadge = document.createElement('div');
+      authorBadge.className = 'map-author-badge';
+      authorBadge.textContent = '© Elie Habib · Someone™';
+      el.appendChild(authorBadge);
+    }
     this.container.appendChild(el);
     this.layerTogglesEl = el;
 

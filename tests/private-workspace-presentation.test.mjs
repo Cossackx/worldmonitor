@@ -37,3 +37,13 @@ test('every hosted-branding surface in the dashboard shell sits inside a shouldR
   assert.match(ungated, /worldmonitor\.app\/docs\/documentation/);
   assert.match(ungated, /site-footer-copy.*World Monitor/);
 });
+
+test('the map layer-tray author badge is gated in both 2D and 3D renderers', () => {
+  for (const file of ['src/components/DeckGLMap.ts', 'src/components/GlobeMap.ts']) {
+    const source = readFileSync(resolve(root, file), 'utf8');
+    const idx = source.indexOf("'© Elie Habib · Someone™'");
+    assert.ok(idx > 0, `${file} still renders the badge somewhere`);
+    const preceding = source.slice(Math.max(0, idx - 400), idx);
+    assert.match(preceding, /shouldRenderHostedBranding\(PRIVATE_WORKSPACE_ENABLED\)/, `${file} badge is not gated`);
+  }
+});

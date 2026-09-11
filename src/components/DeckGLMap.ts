@@ -4,6 +4,7 @@
  * Mobile devices gracefully degrade to the D3/SVG-based Map component
  */
 import { MapboxOverlay } from '@deck.gl/mapbox';
+import { PRIVATE_WORKSPACE_ENABLED, shouldRenderHostedBranding } from '@/config/private-workspace';
 import type { Layer, LayersList, PickingInfo } from '@deck.gl/core';
 import { GeoJsonLayer, ScatterplotLayer, PathLayer, IconLayer, TextLayer, PolygonLayer } from '@deck.gl/layers';
 import maplibregl from 'maplibre-gl';
@@ -5694,10 +5695,12 @@ export class DeckGLMap {
       </div>
     `, "legacy direct innerHTML migration"));
 
-    const authorBadge = document.createElement('div');
-    authorBadge.className = 'map-author-badge';
-    authorBadge.textContent = '© Elie Habib · Someone™';
-    toggles.appendChild(authorBadge);
+    if (shouldRenderHostedBranding(PRIVATE_WORKSPACE_ENABLED)) {
+      const authorBadge = document.createElement('div');
+      authorBadge.className = 'map-author-badge';
+      authorBadge.textContent = '© Elie Habib · Someone™';
+      toggles.appendChild(authorBadge);
+    }
 
     this.container.appendChild(toggles);
 
