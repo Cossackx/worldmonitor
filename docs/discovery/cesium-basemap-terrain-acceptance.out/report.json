@@ -1,0 +1,74 @@
+{
+  "url": "http://127.0.0.1:4200/?cesiumSpike=1&lat=32&lon=53&zoom=4",
+  "startedAt": "2026-09-11T17:12:16.569Z",
+  "steps": [
+    {
+      "name": "adapter-status",
+      "basemap": {
+        "status": "ready",
+        "source": "esri-imagery",
+        "error": null,
+        "notice": null
+      },
+      "terrain": {
+        "status": "ready",
+        "error": null
+      },
+      "terrainProvider": "CesiumTerrainProvider",
+      "imageryProvider": "ArcGisMapServerImageryProvider",
+      "imageryLayers": 1,
+      "creditText": "Powered by Esri"
+    },
+    {
+      "name": "overhead-settle",
+      "tilesLoaded": true,
+      "renders": 12
+    },
+    {
+      "name": "oblique-settle",
+      "tilesLoaded": true,
+      "renders": 9
+    },
+    {
+      "name": "terrain-heights",
+      "results": [
+        {
+          "name": "Tehran",
+          "lon": 51.4,
+          "lat": 35.7,
+          "min": 900,
+          "max": 1800,
+          "height": 1200.8358822251066,
+          "ok": true
+        },
+        {
+          "name": "Damavand summit area",
+          "lon": 52.11,
+          "lat": 35.95,
+          "min": 3500,
+          "max": 5800,
+          "height": 5292.749407308397,
+          "ok": true
+        },
+        {
+          "name": "Caspian Sea (water, ~-28 m)",
+          "lon": 51.2,
+          "lat": 36.9,
+          "min": -200,
+          "max": 150,
+          "height": -33.12713130442398,
+          "ok": true
+        }
+      ]
+    },
+    {
+      "name": "network",
+      "esriRequests": 0,
+      "reearthRequests": 0,
+      "note": "performance buffer may cap; >0 is the signal"
+    }
+  ],
+  "pass": true,
+  "pageErrors": [],
+  "finishedAt": "2026-09-11T17:12:19.682Z"
+}

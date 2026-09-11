@@ -394,7 +394,7 @@ export class MapContainer {
       const banner = document.createElement('div');
       banner.className = 'cesium-spike-limitations-banner';
       banner.setAttribute('role', 'note');
-      banner.textContent = '3D prototype · OpenStreetMap basemap · limited event layers';
+      banner.textContent = '3D prototype · Esri satellite imagery + Re:Earth terrain (keyless) · limited event layers';
       this.container.appendChild(banner);
     }
   }

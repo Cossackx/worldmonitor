@@ -20,20 +20,28 @@ import type { WeatherAlert } from '@/services/weather';
 export const CESIUM_SPIKE_LIMITATIONS = Object.freeze({
   renderedLayers: ['earthquakes', 'natural', 'protests', 'weather', 'flash'] as const,
   unsupportedLayers: 'All other MapLayers entries are preserved as state but have no Cesium entities.',
-  providers: 'No imagery or terrain network is activated unless enableKeylessBasemap is explicitly true; that option uses OpenStreetMap tiles with attribution.',
+  providers: 'No imagery or terrain network is activated unless enableKeylessBasemap is explicitly true. That option uses the keyless Esri World Imagery service (attribution required) with OpenStreetMap tiles as the fallback, and keyless Re:Earth ellipsoidal terrain with a flat ellipsoid fallback. No key, token, or billable provider is ever used.',
   camera: 'Longitude/latitude/zoom are canonical; Cesium heading, pitch, and height are not round-tripped.',
 });
+
+export type CesiumBasemapSource = 'esri-imagery' | 'osm';
 
 export type CesiumMapAdapterOptions = {
   onInitError: (error: unknown) => void;
   chrome: boolean;
   cesium?: CesiumDependency;
   createViewer?: (container: HTMLElement, cesium: CesiumDependency) => CesiumViewer;
-  /** Opt into the keyless OpenStreetMap basemap for a real geographic surface. */
+  /** Opt into a keyless geographic basemap. Without this the globe stays isolated. */
   enableKeylessBasemap?: boolean;
+  /** Preferred keyless basemap. Defaults to Esri World Imagery; OSM is the truthful fallback. */
+  basemap?: CesiumBasemapSource;
+  /** Opt out of keyless Re:Earth terrain (defaults to enabled whenever a basemap is enabled). */
+  enableKeylessTerrain?: boolean;
 };
 
 export type CesiumBasemapStatus = 'isolated' | 'loading' | 'ready' | 'failed';
+/** `flat` means the ellipsoid is in use because Re:Earth could not be reached; it is not a failure of the map. */
+export type CesiumTerrainStatus = 'isolated' | 'loading' | 'ready' | 'flat';
 
 export interface CesiumDependency {
   Viewer: new (container: HTMLElement, options: Record<string, unknown>) => CesiumViewer;
@@ -44,12 +52,20 @@ export interface CesiumDependency {
   ScreenSpaceEventType: { LEFT_CLICK: unknown; RIGHT_CLICK: unknown };
   EllipsoidTerrainProvider: new () => unknown;
   OpenStreetMapImageryProvider: new (options: { url: string; credit: string }) => CesiumImageryProvider;
+  ArcGisMapServerImageryProvider: { fromUrl(url: string, options?: { credit?: string }): Promise<CesiumImageryProvider> };
+  CesiumTerrainProvider: { fromUrl(url: string): Promise<unknown> };
+  Credit: new (html: string, showOnScreen?: boolean) => unknown;
   ImageryLayer: new (provider: CesiumImageryProvider) => unknown;
 }
 
 export interface CesiumImageryProvider {
   errorEvent?: { addEventListener(callback: (error: unknown) => void): () => void };
 };
+
+export interface CesiumCreditDisplay {
+  addStaticCredit(credit: unknown): void;
+  removeStaticCredit?(credit: unknown): void;
+}
 
 export interface CesiumViewer {
   scene: {
@@ -60,9 +76,12 @@ export interface CesiumViewer {
       pickEllipsoid?: (position: { x: number; y: number }, ellipsoid?: unknown) => unknown;
     };
     globe?: { ellipsoid?: unknown };
+    frameState?: { creditDisplay?: CesiumCreditDisplay };
     requestRender?: () => void;
     pick?: (position: { x: number; y: number }) => { id?: { id?: string } } | undefined;
   };
+  /** Settable on a real Viewer; the adapter assigns the keyless terrain provider here. */
+  terrainProvider?: unknown;
   canvas?: HTMLCanvasElement;
   entities: {
     add(entity: Record<string, unknown>): unknown;
@@ -102,6 +121,21 @@ const MIN_CAMERA_HEIGHT = 250;
 const EVENT_MARKER_HEIGHT = 25_000;
 const OSM_TILE_URL = 'https://tile.openstreetmap.org/';
 const OSM_CREDIT = '© OpenStreetMap contributors';
+// Esri World Imagery: the keyless satellite basemap God's Eye ships as its
+// default. The classic ArcGIS Online tile service answers without a key, but
+// Esri requires attribution. Cesium ignores the `credit` option for tiled
+// ArcGIS MapServer sources, so the on-screen notice is added as an explicit
+// static credit (mirrors God's Eye's mapStackController._syncEsriAttribution).
+export const ESRI_WORLD_IMAGERY_URL = 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer';
+export const ESRI_IMAGERY_CREDIT = 'Powered by Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community';
+export const ESRI_ATTRIBUTION_HTML = '<a href="https://www.esri.com" target="_blank" rel="noopener">Powered by Esri</a>';
+// Keyless global ellipsoidal terrain (Re:Earth Terrain / Mapterhorn, CC BY 4.0).
+// Fetched lazily after the viewer exists; the flat ellipsoid stays if it fails.
+export const REEARTH_TERRAIN_URL = 'https://terrain.reearth.land/cesium-mesh/ellipsoid';
+export const REEARTH_TERRAIN_CREDIT = 'Terrain: Re:Earth Terrain / Mapterhorn (CC BY 4.0)';
+// Two tile failures on the active Esri provider trigger the OSM fallback; one
+// transient error is left to Cesium's own retry, as in God's Eye.
+const ESRI_FAILURES_BEFORE_FALLBACK = 2;
 
 export function clampCesiumCameraState(lat: number, lon: number, zoom: number): { lat: number; lon: number; zoom: number } {
   const normalizedLon = ((((lon + 180) % 360) + 360) % 360) - 180;
@@ -133,9 +167,19 @@ export class CesiumMapAdapter {
   private removeCameraChangedListener: (() => void) | null = null;
   private pendingPointSets = new Map<string, { points: Array<{ id: string; lat: number; lon: number }>; color: unknown }>();
   private basemapStatus: CesiumBasemapStatus;
+  private basemapSource: CesiumBasemapSource | null = null;
   private basemapError: string | null = null;
+  /** Human-readable note when the map is usable but not on the preferred provider. */
+  private basemapNotice: string | null = null;
   private basemapLayer: unknown = null;
   private removeBasemapErrorListener: (() => void) | null = null;
+  private esriCredit: unknown = null;
+  private esriCreditShown = false;
+  private esriFallbackPending = false;
+  private terrainStatus: CesiumTerrainStatus;
+  private terrainError: string | null = null;
+  private terrainPromise: Promise<void> | null = null;
+  private terrainCredit: unknown = null;
 
   public constructor(container: HTMLElement, initialState: MapContainerState, options: CesiumMapAdapterOptions) {
     this.container = container;
@@ -143,8 +187,13 @@ export class CesiumMapAdapter {
     this.options = options;
     this.cesium = options.cesium ?? (Cesium as unknown as CesiumDependency);
     this.basemapStatus = options.enableKeylessBasemap ? 'loading' : 'isolated';
+    this.terrainStatus = this.wantsKeylessTerrain() ? 'loading' : 'isolated';
     this.container.classList.add('globe-mode', 'cesium-map-adapter');
     this.container.style.position = 'relative';
+  }
+
+  private wantsKeylessTerrain(): boolean {
+    return !!this.options.enableKeylessBasemap && this.options.enableKeylessTerrain !== false;
   }
 
   public whenReady(): Promise<void> {
@@ -170,7 +219,15 @@ export class CesiumMapAdapter {
         terrainProvider: new cesium.EllipsoidTerrainProvider(),
       }));
       this.viewer = createViewer(this.container, this.cesium);
+      // Dev-only diagnostic seam so browser acceptance scripts can read the
+      // adapter's truthful status instead of guessing from pixels.
+      if (import.meta.env?.DEV && typeof window !== 'undefined') {
+        (window as unknown as { __cesiumMapAdapter?: CesiumMapAdapter }).__cesiumMapAdapter = this;
+      }
       if (this.options.enableKeylessBasemap) await this.activateKeylessBasemap();
+      // Terrain is deliberately not awaited: Re:Earth's layer.json fetch must
+      // not delay readiness, and the flat ellipsoid is a correct interim state.
+      if (this.wantsKeylessTerrain()) this.terrainPromise = this.activateKeylessTerrain();
       this.installPicking();
       this.installCameraTracking();
       this.applyCenter(this.state.pan.y, this.state.pan.x, this.state.zoom);
@@ -183,27 +240,143 @@ export class CesiumMapAdapter {
     }
   }
 
-  /** Reports whether the adapter has a geographic basemap, without hiding failure. */
-  public getBasemapStatus(): { status: CesiumBasemapStatus; error: string | null } {
-    return { status: this.basemapStatus, error: this.basemapError };
+  /** Reports whether the adapter has a geographic basemap, which provider is live, and any fallback notice. */
+  public getBasemapStatus(): { status: CesiumBasemapStatus; source: CesiumBasemapSource | null; error: string | null; notice: string | null } {
+    return { status: this.basemapStatus, source: this.basemapSource, error: this.basemapError, notice: this.basemapNotice };
+  }
+
+  /** Reports whether real terrain is in use. `flat` is an honest degraded state, not an init failure. */
+  public getTerrainStatus(): { status: CesiumTerrainStatus; error: string | null } {
+    return { status: this.terrainStatus, error: this.terrainError };
+  }
+
+  /** Resolves once the lazy terrain attempt has settled (ready or flat). Never rejects. */
+  public whenTerrainSettled(): Promise<void> {
+    return this.terrainPromise ?? Promise.resolve();
+  }
+
+  /** Dev/diagnostic access to the underlying viewer. Not part of the MapContainer contract. */
+  public getViewerForDiagnostics(): CesiumViewer | null {
+    return this.viewer;
   }
 
   private async activateKeylessBasemap(): Promise<void> {
+    const preferred = this.options.basemap ?? 'esri-imagery';
     try {
-      const provider = new this.cesium.OpenStreetMapImageryProvider({ url: OSM_TILE_URL, credit: OSM_CREDIT });
-      this.basemapLayer = new this.cesium.ImageryLayer(provider);
-      this.viewer?.imageryLayers.add(this.basemapLayer, 0);
-      this.removeBasemapErrorListener = provider.errorEvent?.addEventListener((error) => {
-        this.basemapError = error instanceof Error ? error.message : String(error);
-        this.basemapStatus = 'failed';
-        this.options.onInitError(error);
-        this.viewer?.scene.requestRender?.();
-      }) ?? null;
+      const resolved = await this.resolveBasemapProvider(preferred);
+      if (this.destroyed || !this.viewer) return;
+      this.installBasemap(resolved.provider, resolved.source);
+      this.basemapSource = resolved.source;
+      this.basemapNotice = resolved.notice;
       this.basemapStatus = 'ready';
     } catch (error) {
       this.basemapError = error instanceof Error ? error.message : String(error);
       this.basemapStatus = 'failed';
+      this.basemapSource = null;
       this.options.onInitError(error);
+    }
+  }
+
+  /**
+   * Esri first, OSM as the truthful fallback. A fallback is reported through
+   * `notice`, never hidden. If the preferred provider is OSM there is no
+   * further fallback and construction failure surfaces as `failed`.
+   */
+  private async resolveBasemapProvider(preferred: CesiumBasemapSource): Promise<{ provider: CesiumImageryProvider; source: CesiumBasemapSource; notice: string | null }> {
+    if (preferred === 'esri-imagery') {
+      try {
+        const provider = await this.cesium.ArcGisMapServerImageryProvider.fromUrl(ESRI_WORLD_IMAGERY_URL, { credit: ESRI_IMAGERY_CREDIT });
+        return { provider, source: 'esri-imagery', notice: null };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.warn('[CesiumMapAdapter] Esri World Imagery unavailable, falling back to OSM:', message);
+        return { provider: this.createOsmProvider(), source: 'osm', notice: `Esri Satellite is unavailable; using OSM (${message})` };
+      }
+    }
+    return { provider: this.createOsmProvider(), source: 'osm', notice: null };
+  }
+
+  private createOsmProvider(): CesiumImageryProvider {
+    return new this.cesium.OpenStreetMapImageryProvider({ url: OSM_TILE_URL, credit: OSM_CREDIT });
+  }
+
+  private installBasemap(provider: CesiumImageryProvider, source: CesiumBasemapSource): void {
+    this.removeBasemap();
+    this.basemapLayer = new this.cesium.ImageryLayer(provider);
+    this.viewer?.imageryLayers.add(this.basemapLayer, 0);
+    this.syncEsriAttribution(source === 'esri-imagery');
+    let failures = 0;
+    this.removeBasemapErrorListener = provider.errorEvent?.addEventListener((error) => {
+      if (this.destroyed) return;
+      if (source === 'esri-imagery') {
+        // Construction can succeed while tile requests fail (blocked network,
+        // service change). Two failures swap to OSM, as God's Eye does.
+        const retryCount = Number((error as { timesRetried?: unknown })?.timesRetried);
+        failures = Number.isInteger(retryCount) && retryCount >= 0 ? Math.max(failures + 1, retryCount + 1) : failures + 1;
+        if (failures < ESRI_FAILURES_BEFORE_FALLBACK || this.esriFallbackPending) return;
+        this.esriFallbackPending = true;
+        const message = 'Esri Satellite tile requests failed; using OSM';
+        console.warn(`[CesiumMapAdapter] ${message}`);
+        try {
+          this.installBasemap(this.createOsmProvider(), 'osm');
+          this.basemapSource = 'osm';
+          this.basemapNotice = message;
+          this.basemapStatus = 'ready';
+        } catch (fallbackError) {
+          this.basemapError = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
+          this.basemapStatus = 'failed';
+          this.options.onInitError(fallbackError);
+        } finally {
+          this.esriFallbackPending = false;
+        }
+        this.viewer?.scene.requestRender?.();
+        return;
+      }
+      this.basemapError = error instanceof Error ? error.message : String(error);
+      this.basemapStatus = 'failed';
+      this.options.onInitError(error);
+      this.viewer?.scene.requestRender?.();
+    }) ?? null;
+  }
+
+  private removeBasemap(): void {
+    this.removeBasemapErrorListener?.();
+    this.removeBasemapErrorListener = null;
+    if (this.basemapLayer) this.viewer?.imageryLayers.remove(this.basemapLayer, false);
+    this.basemapLayer = null;
+  }
+
+  /** Show or hide the on-screen "Powered by Esri" notice with the Esri layer. */
+  private syncEsriAttribution(wanted: boolean): void {
+    const creditDisplay = this.viewer?.scene.frameState?.creditDisplay;
+    if (!creditDisplay || wanted === this.esriCreditShown) return;
+    this.esriCredit ??= new this.cesium.Credit(ESRI_ATTRIBUTION_HTML, true);
+    try {
+      if (wanted) creditDisplay.addStaticCredit(this.esriCredit);
+      else creditDisplay.removeStaticCredit?.(this.esriCredit);
+      this.esriCreditShown = wanted;
+    } catch {
+      // A Cesium build without static-credit removal must not break the map.
+    }
+  }
+
+  private async activateKeylessTerrain(): Promise<void> {
+    try {
+      const provider = await this.cesium.CesiumTerrainProvider.fromUrl(REEARTH_TERRAIN_URL);
+      if (this.destroyed || !this.viewer) return;
+      this.viewer.terrainProvider = provider;
+      const creditDisplay = this.viewer.scene.frameState?.creditDisplay;
+      if (creditDisplay) {
+        this.terrainCredit = new this.cesium.Credit(REEARTH_TERRAIN_CREDIT, false);
+        creditDisplay.addStaticCredit(this.terrainCredit);
+      }
+      this.terrainStatus = 'ready';
+      this.viewer.scene.requestRender?.();
+    } catch (error) {
+      // The flat ellipsoid configured at viewer creation is left in place.
+      this.terrainError = error instanceof Error ? error.message : String(error);
+      this.terrainStatus = 'flat';
+      console.warn('[CesiumMapAdapter] Re:Earth terrain unavailable, keeping flat ellipsoid terrain:', this.terrainError);
     }
   }
 
@@ -361,10 +534,12 @@ export class CesiumMapAdapter {
     if (this.flashTimer) clearTimeout(this.flashTimer);
     this.removeCameraChangedListener?.();
     this.removeCameraChangedListener = null;
-    this.removeBasemapErrorListener?.();
-    this.removeBasemapErrorListener = null;
-    if (this.basemapLayer) this.viewer?.imageryLayers.remove(this.basemapLayer, false);
-    this.basemapLayer = null;
+    this.syncEsriAttribution(false);
+    if (this.terrainCredit) {
+      try { this.viewer?.scene.frameState?.creditDisplay?.removeStaticCredit?.(this.terrainCredit); } catch { /* see syncEsriAttribution */ }
+      this.terrainCredit = null;
+    }
+    this.removeBasemap();
     const handler = this.viewer?.screenSpaceEventHandler;
     handler?.removeInputAction(this.cesium.ScreenSpaceEventType.LEFT_CLICK);
     handler?.removeInputAction(this.cesium.ScreenSpaceEventType.RIGHT_CLICK);
