@@ -20,3 +20,20 @@ test('community nudge exits before creating unsolicited private-mode UI', () => 
   assert.match(communityWidget, /if \(!shouldRenderCommunityNudge\(PRIVATE_WORKSPACE_ENABLED\)\) return;/);
   assert.match(communityWidget, /document\.body\.appendChild\(widget\)/);
 });
+
+test('every hosted-branding surface in the dashboard shell sits inside a shouldRenderHostedBranding gate', () => {
+  const gated = /const hostedBranding\w+ = shouldRenderHostedBranding\(PRIVATE_WORKSPACE_ENABLED\)\s*\?\s*`[\s\S]*?`\s*:\s*(?:''|\([^)]*\))/g;
+  const blocks = panelLayout.match(gated) ?? [];
+  assert.ok(blocks.length >= 6, `expected the header, mobile credit, mobile links, mobile version, footer brand and footer links gates, found ${blocks.length}`);
+  const ungated = panelLayout.replace(gated, '');
+  for (const marker of [
+    'x.com/eliehabib', '@eliehabib', 'github.com/koala73/worldmonitor', 'worldmonitor.app/blog', 'status.worldmonitor.app',
+    'x.com/worldmonitorai', 'footerDownloadMount', 'site-footer-brand', 'class="version"', 'mobile-menu-version',
+  ]) {
+    assert.equal(ungated.includes(marker), false, `${marker} is rendered outside the hosted-branding gate`);
+  }
+  // Navigation, docs and the copyright attribution stay in every mode.
+  assert.match(ungated, /referenceLinksHtml/);
+  assert.match(ungated, /worldmonitor\.app\/docs\/documentation/);
+  assert.match(ungated, /site-footer-copy.*World Monitor/);
+});

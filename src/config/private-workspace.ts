@@ -27,6 +27,18 @@ export function shouldRenderCommunityNudge(privateWorkspaceEnabled: boolean): bo
   return shouldRenderHostedMarketing(privateWorkspaceEnabled);
 }
 
+/**
+ * Hosted-product branding is omitted in private mode: the author handle and
+ * X/GitHub credit links, the version badge, the footer brand block, and the
+ * Blog/Status/GitHub/X/Download links. The dashboard title, the reference
+ * links (Countries, Chokepoints, …), the Docs link and the copyright notice
+ * stay: the first two are navigation, the last is attribution we keep under
+ * the accepted AGPL reuse.
+ */
+export function shouldRenderHostedBranding(privateWorkspaceEnabled: boolean): boolean {
+  return shouldRenderHostedMarketing(privateWorkspaceEnabled);
+}
+
 /** Signed-in users retain their account control; signed-out hosted CTAs do not. */
 export function shouldRenderHostedAuthCtas(
   privateWorkspaceEnabled: boolean,

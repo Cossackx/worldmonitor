@@ -4,6 +4,7 @@ import {
   shouldRenderHostedMarketing,
   shouldRenderHostedFooterLinks,
   shouldRenderCommunityNudge,
+  shouldRenderHostedBranding,
 } from '@/config/private-workspace';
 
 describe('private workspace presentation policy', () => {
@@ -19,5 +20,10 @@ describe('private workspace presentation policy', () => {
     expect(shouldRenderHostedFooterLinks(false)).toBe(true);
     expect(shouldRenderCommunityNudge(true)).toBe(false);
     expect(shouldRenderCommunityNudge(false)).toBe(true);
+  });
+
+  it('suppresses hosted-product branding in private mode', () => {
+    expect(shouldRenderHostedBranding(true)).toBe(false);
+    expect(shouldRenderHostedBranding(false)).toBe(true);
   });
 });

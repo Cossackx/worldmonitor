@@ -43,6 +43,7 @@ import {
 import { BETA_MODE } from '@/config/beta';
 import {
   PRIVATE_WORKSPACE_ENABLED,
+  shouldRenderHostedBranding,
   shouldRenderHostedFooterLinks,
   shouldRenderCommunityNudge,
 } from '@/config/private-workspace';
@@ -1047,6 +1048,48 @@ export class PanelLayoutManager implements AppModule {
     const hostedFooterPricingLink = shouldRenderHostedFooterLinks(PRIVATE_WORKSPACE_ENABLED)
       ? `<a href="${referenceOrigin}/pro#pricing" target="_blank" rel="noopener">Pricing</a>`
       : '';
+    // Hosted-product branding (author credit, version badge, brand block,
+    // Blog/Status/GitHub/X/Download links) is grouped here so the private
+    // workspace can drop all of it with one gate; see private-workspace.ts.
+    const hostedBrandingHeader = shouldRenderHostedBranding(PRIVATE_WORKSPACE_ENABLED)
+      ? `<span class="version">v${__APP_VERSION__}</span>${BETA_MODE ? '<span class="beta-badge">BETA</span>' : ''}
+          <a href="https://x.com/eliehabib" target="_blank" rel="noopener" class="credit-link">
+            <svg class="x-logo" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+            <span class="credit-text">@eliehabib</span>
+          </a>
+          <a href="https://github.com/koala73/worldmonitor" target="_blank" rel="noopener" class="github-link" title="${t('header.viewOnGitHub')}" aria-label="${t('header.viewOnGitHub')}">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          </a>`
+      : (BETA_MODE ? '<span class="beta-badge">BETA</span>' : '');
+    const hostedBrandingMobileCredit = shouldRenderHostedBranding(PRIVATE_WORKSPACE_ENABLED)
+      ? `<a class="mobile-menu-item" href="https://x.com/eliehabib" target="_blank" rel="noopener">
+          <span class="mobile-menu-item-icon"><svg class="x-logo" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></span>
+          <span class="mobile-menu-item-label">@eliehabib</span>
+        </a>`
+      : '';
+    const hostedBrandingMobileLinks = shouldRenderHostedBranding(PRIVATE_WORKSPACE_ENABLED)
+      ? `<a href="https://www.worldmonitor.app/blog/" target="_blank" rel="noopener">Blog</a>
+          <a href="https://status.worldmonitor.app/" target="_blank" rel="noopener">Status</a>`
+      : '';
+    const hostedBrandingMobileVersion = shouldRenderHostedBranding(PRIVATE_WORKSPACE_ENABLED)
+      ? `<div class="mobile-menu-version">v${__APP_VERSION__}</div>`
+      : '';
+    const hostedBrandingFooterBrand = shouldRenderHostedBranding(PRIVATE_WORKSPACE_ENABLED)
+      ? `<div class="site-footer-brand">
+          <img src="/favico/android-chrome-96x96.png" alt="" width="28" height="28" loading="lazy" decoding="async" class="site-footer-icon" />
+          <div class="site-footer-brand-text">
+            <span class="site-footer-name">WORLD MONITOR</span>
+            <span class="site-footer-sub">v${__APP_VERSION__} &middot; <a href="https://x.com/eliehabib" target="_blank" rel="noopener" class="site-footer-credit">@eliehabib</a></span>
+          </div>
+        </div>`
+      : '';
+    const hostedBrandingFooterLinks = shouldRenderHostedBranding(PRIVATE_WORKSPACE_ENABLED)
+      ? `<a href="https://www.worldmonitor.app/blog/" target="_blank" rel="noopener">Blog</a>
+          <a href="https://status.worldmonitor.app/" target="_blank" rel="noopener">Status</a>
+          <a href="https://github.com/koala73/worldmonitor" target="_blank" rel="noopener">GitHub</a>
+          <a href="https://x.com/worldmonitorai" target="_blank" rel="noopener">X</a>
+          ${this.ctx.isDesktopApp ? '' : `<span id="footerDownloadMount"></span>`}`
+      : '';
     const referenceLinksHtml = DASHBOARD_REFERENCE_LINKS.map(({ label, path }) => {
       const href = `${referenceOrigin}${path}`;
       return `<a href="${href}" target="_blank" rel="noopener">${label}</a>`;
@@ -1121,14 +1164,7 @@ export class PanelLayoutManager implements AppModule {
               <span class="variant-label">Good News</span>
             </a>`;
       })()}</div>
-          <span class="logo">MONITOR</span><span class="logo-mobile">World Monitor</span><span class="version">v${__APP_VERSION__}</span>${BETA_MODE ? '<span class="beta-badge">BETA</span>' : ''}
-          <a href="https://x.com/eliehabib" target="_blank" rel="noopener" class="credit-link">
-            <svg class="x-logo" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-            <span class="credit-text">@eliehabib</span>
-          </a>
-          <a href="https://github.com/koala73/worldmonitor" target="_blank" rel="noopener" class="github-link" title="${t('header.viewOnGitHub')}" aria-label="${t('header.viewOnGitHub')}">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-          </a>
+          <span class="logo">MONITOR</span><span class="logo-mobile">World Monitor</span>${hostedBrandingHeader}
           <button class="mobile-settings-btn" id="mobileSettingsBtn" title="${t('header.settings')}" aria-label="${t('header.settings')}">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
           </button>
@@ -1215,19 +1251,15 @@ export class PanelLayoutManager implements AppModule {
           <span class="mobile-menu-item-icon">${getCurrentTheme() === 'dark' ? '☀️' : '🌙'}</span>
           <span class="mobile-menu-item-label">${getCurrentTheme() === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
         </button>
-        <a class="mobile-menu-item" href="https://x.com/eliehabib" target="_blank" rel="noopener">
-          <span class="mobile-menu-item-icon"><svg class="x-logo" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></span>
-          <span class="mobile-menu-item-label">@eliehabib</span>
-        </a>
+        ${hostedBrandingMobileCredit}
         <div class="mobile-menu-divider"></div>
         <div class="mobile-menu-footer-links">
           ${referenceLinksHtml}
           ${hostedFooterPricingLink}
-          <a href="https://www.worldmonitor.app/blog/" target="_blank" rel="noopener">Blog</a>
           <a href="https://www.worldmonitor.app/docs/documentation" target="_blank" rel="noopener">Docs</a>
-          <a href="https://status.worldmonitor.app/" target="_blank" rel="noopener">Status</a>
+          ${hostedBrandingMobileLinks}
         </div>
-        <div class="mobile-menu-version">v${__APP_VERSION__}</div>
+        ${hostedBrandingMobileVersion}
       </nav>
       <div class="region-sheet-backdrop" id="regionSheetBackdrop"></div>
       <div class="region-bottom-sheet" id="regionBottomSheet">
@@ -1301,23 +1333,13 @@ export class PanelLayoutManager implements AppModule {
         </button>
       </nav>
       <footer class="site-footer">
-        <div class="site-footer-brand">
-          <img src="/favico/android-chrome-96x96.png" alt="" width="28" height="28" loading="lazy" decoding="async" class="site-footer-icon" />
-          <div class="site-footer-brand-text">
-            <span class="site-footer-name">WORLD MONITOR</span>
-            <span class="site-footer-sub">v${__APP_VERSION__} &middot; <a href="https://x.com/eliehabib" target="_blank" rel="noopener" class="site-footer-credit">@eliehabib</a></span>
-          </div>
-        </div>
+        ${hostedBrandingFooterBrand}
         <nav aria-label="World Monitor references">
           ${referenceLinksHtml}
           ${hostedFooterPricingLink}
-          <a href="https://www.worldmonitor.app/blog/" target="_blank" rel="noopener">Blog</a>
           <a href="https://www.worldmonitor.app/docs/documentation" target="_blank" rel="noopener">Docs</a>
-          <a href="https://status.worldmonitor.app/" target="_blank" rel="noopener">Status</a>
-          <a href="https://github.com/koala73/worldmonitor" target="_blank" rel="noopener">GitHub</a>
           ${shouldRenderCommunityNudge(PRIVATE_WORKSPACE_ENABLED) ? '<a href="https://discord.gg/re63kWKxaz" target="_blank" rel="noopener">Discord</a>' : ''}
-          <a href="https://x.com/worldmonitorai" target="_blank" rel="noopener">X</a>
-          ${this.ctx.isDesktopApp ? '' : `<span id="footerDownloadMount"></span>`}
+          ${hostedBrandingFooterLinks}
         </nav>
         <span class="site-footer-copy">&copy; ${new Date().getFullYear()} World Monitor</span>
       </footer>
