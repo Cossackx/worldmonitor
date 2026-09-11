@@ -1752,19 +1752,38 @@ export default defineConfig(({ mode }) => {
         },
         // OpenSky Network - Aircraft tracking (military flight detection).
         // Prod routes /api/opensky through the relay (api/opensky.js), which calls
-        // OpenSky's states/all endpoint. Dev has no relay, so proxy straight to
-        // states/all — stripping the prefix to '' would hit the invalid /api root (404).
-        '/api/opensky': {
-          target: 'https://opensky-network.org/api',
-          changeOrigin: true,
-          secure: true,
-          rewrite: (path) => path.replace(/^\/api\/opensky/, '/states/all'),
-          configure: (proxy) => {
-            proxy.on('error', (err) => {
-              console.log('OpenSky proxy error:', err.message);
-            });
-          },
-        },
+        // OpenSky's states/all endpoint. Dev normally has no relay, so it proxies
+        // straight to states/all (anonymous, 400 credits/day) — stripping the
+        // prefix to '' would hit the invalid /api root (404). When a relay is
+        // configured for this dev run (WS_RELAY_URL, as the local AIS preview
+        // launcher does), route through it like prod so the relay's authenticated
+        // OpenSky client and per-account cooldown apply.
+        '/api/opensky': process.env.WS_RELAY_URL
+          ? {
+              target: process.env.WS_RELAY_URL.replace(/^ws(s?):\/\//, 'http$1://').replace(/\/$/, ''),
+              changeOrigin: true,
+              secure: false,
+              rewrite: (path) => path.replace(/^\/api\/opensky/, '/opensky'),
+              headers: process.env.RELAY_SHARED_SECRET
+                ? { [(process.env.RELAY_AUTH_HEADER || 'x-relay-key').toLowerCase()]: process.env.RELAY_SHARED_SECRET }
+                : undefined,
+              configure: (proxy) => {
+                proxy.on('error', (err) => {
+                  console.log('OpenSky relay proxy error:', err.message);
+                });
+              },
+            }
+          : {
+              target: 'https://opensky-network.org/api',
+              changeOrigin: true,
+              secure: true,
+              rewrite: (path) => path.replace(/^\/api\/opensky/, '/states/all'),
+              configure: (proxy) => {
+                proxy.on('error', (err) => {
+                  console.log('OpenSky proxy error:', err.message);
+                });
+              },
+            },
         // ADS-B Exchange - Military aircraft tracking (backup/supplement)
         '/api/adsb-exchange': {
           target: 'https://adsbexchange.com/api',
