@@ -907,7 +907,9 @@ function webMcpDevSecurityHeadersPlugin(): Plugin {
 }
 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), '');
+  const env = process.env.WM_SKIP_DOTENV === '1'
+    ? { ...process.env }
+    : loadEnv(mode, process.cwd(), '');
   // Inject environment variables from .env files into process.env.
   // This ensures that API keys and other secrets in .env.local are
   // available to the dev server plugins and server-side handlers.
@@ -1147,6 +1149,10 @@ export default defineConfig(({ mode }) => {
       }),
     ],
     resolve: {
+      // Cesium's engine and widgets expose mutable process-wide limits
+      // (ContextLimits). Keep Vite from loading a second physical copy when
+      // the Cesium entry is optimized separately from the lazy adapter.
+      dedupe: ['@cesium/engine', '@cesium/widgets'],
       alias: {
         '@': resolve(__dirname, 'src'),
         child_process: resolve(__dirname, 'src/shims/child-process.ts'),

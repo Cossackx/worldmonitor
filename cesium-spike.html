@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CesiumMapAdapter lifecycle spike</title>
+    <style>
+      :root { color-scheme: dark; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+      * { box-sizing: border-box; }
+      body { margin: 0; min-height: 100vh; background: #071018; color: #d9f7ff; }
+      header { padding: 18px 22px; border-bottom: 1px solid #24404d; background: #0b1b25; }
+      h1 { margin: 0 0 6px; font-size: 18px; letter-spacing: .08em; }
+      p { margin: 0; color: #8eb1bd; font-size: 12px; }
+      main { display: grid; grid-template-columns: minmax(150px, 20%) minmax(320px, 1fr) minmax(150px, 20%); gap: 12px; padding: 12px; min-height: calc(100vh - 76px); }
+      aside, section { border: 1px solid #24404d; background: #0b1821; border-radius: 6px; }
+      aside { padding: 14px; }
+      aside h2, section h2 { margin: 0 0 10px; color: #80e8ff; font-size: 12px; letter-spacing: .1em; }
+      .map-panel { display: flex; flex-direction: column; min-width: 0; }
+      .map-toolbar { padding: 10px; border-bottom: 1px solid #24404d; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+      button { border: 1px solid #3a7888; border-radius: 4px; padding: 7px 10px; color: #d9f7ff; background: #12303c; font: inherit; font-size: 11px; cursor: pointer; }
+      button:hover { background: #1c4c5c; }
+      button:disabled { opacity: .45; cursor: not-allowed; }
+      #cesium-container { position: relative; flex: 1; min-height: 440px; overflow: hidden; background: #08131b; }
+      #cesium-container .cesium-viewer, #cesium-container canvas { width: 100% !important; height: 100% !important; }
+      .readout { margin-top: 12px; padding: 10px; border-top: 1px solid #24404d; font-size: 11px; line-height: 1.7; }
+      .ok { color: #78f0a6; } .error { color: #ff8e8e; }
+      code { color: #f2d58a; }
+      @media (max-width: 760px) { main { grid-template-columns: 1fr; } aside { min-height: 90px; } #cesium-container { min-height: 360px; } }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>CESIUMMAPADAPTER / ISOLATED LIFECYCLE SPIKE</h1>
+      <p>SPIKE · FIXTURE DATA · NOT LIVE · Actual CesiumJS, no imagery/terrain/network providers, no MapContainer integration claim.</p>
+    </header>
+    <main>
+      <aside aria-label="fixture panel">
+        <h2>FIXTURE DATA</h2>
+        <p>One typed earthquake fixture is applied after Mount 3D.</p>
+        <p style="margin-top:12px"><code id="fixture-label">M5.4 · 38.32, 142.37</code></p>
+      </aside>
+      <section class="map-panel" aria-label="Cesium spike map">
+        <div class="map-toolbar">
+          <button id="mount" type="button">Mount 3D</button>
+          <button id="destroy" type="button">Destroy</button>
+          <button id="remount" type="button">Remount</button>
+          <button id="resize" type="button">Resize</button>
+          <span id="operation" role="status" aria-live="polite">idle</span>
+        </div>
+        <div id="cesium-container" data-testid="cesium-container"></div>
+        <div class="readout" aria-label="operation readout">
+          <div id="status">Status: idle</div>
+          <div>mounts: <strong id="mount-count">0</strong> · destroys: <strong id="destroy-count">0</strong> · resizes: <strong id="resize-count">0</strong> · fixture entities: <strong id="fixture-count">0</strong></div>
+        </div>
+      </section>
+      <aside aria-label="scope panel">
+        <h2>NOT LIVE</h2>
+        <p>Local ellipsoid only.</p>
+        <p style="margin-top:12px">Workers, Assets, ThirdParty, and Widgets load from the installed Cesium package through Vite.</p>
+      </aside>
+    </main>
+    <script type="module" src="/src/e2e/cesium-spike.ts"></script>
+  </body>
+</html>

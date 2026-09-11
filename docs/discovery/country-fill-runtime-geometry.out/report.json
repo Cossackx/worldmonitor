@@ -1,0 +1,2999 @@
+{
+  "base": "http://127.0.0.1:4187/",
+  "initial": {
+    "label": "01-initial-2d",
+    "url": "http://127.0.0.1:4187/?zoom=1.00&view=global&timeRange=7d&layers=conflicts%2Cbases%2Chotspots%2Cnuclear%2Csanctions%2Cweather%2CcanadaAlerts%2Ceconomic%2Cwaterways%2Coutages%2Cmilitary%2Cnatural",
+    "map": {
+      "className": "map-container deckgl-mode",
+      "html": "<div class=\"deckgl-map-wrapper\" id=\"deckglMapWrapper\" style=\"position: relative; width: 100%; height: 100%; overflow: hidden;\"><div id=\"deckgl-basemap\" class=\"maplibregl-map\" style=\"position: absolute; top: 0px; left: 0px; width: 100%; height: 100%;\"><div class=\"maplibregl-canvas-container maplibregl-interactive maplibregl-touch-drag-pan maplibregl-touch-zoom-rotate deck-widget-container\"><canvas class=\"maplibregl-canvas\" tabindex=\"0\" aria-label=\"Map\" role=\"region\" width=\"862\" height=\"810\" style=\"width: 862px; height: 810px; touch-action: unset; user-select: none; -webkit-user-drag: none; -webkit-tap-highlight-color: rgba(0, 0, 0, 0); outline: none; cursor: grab;\"></canvas><div style=\"pointer-events: none; position: absolute; overflow: hidden; display: block; left: 0px; top: 0px; width: 862px; height: 810px;\"><div class=\"fill\" style=\"position: absolute; z-index: 2; inset: 0px;\"><div class=\"deck-tooltip\" style=\"z-index: 1; position: absolute; pointer-events: none; color: rgb(160, 167, 180); background-color: rgb(41, 50, 60); padding: 10px; top: 0px; left: 0px; display: none;\"></div></div></div></div><div class=\"maplibregl-control-container\"><div class=\"maplibregl-ctrl-top-left \"><di"
+    },
+    "modeButtons": [
+      {
+        "mode": "flat",
+        "active": true,
+        "title": "2D Map"
+      },
+      {
+        "mode": "globe",
+        "active": false,
+        "title": "3D Globe"
+      }
+    ],
+    "toggles": [
+      {
+        "layer": "hotspots",
+        "checked": true,
+        "text": "🎯\n              Intel Hotspots\n            \n            i"
+      },
+      {
+        "layer": "hotspots",
+        "checked": true,
+        "text": "🎯\n              Intel Hotspots"
+      },
+      {
+        "layer": "conflicts",
+        "checked": true,
+        "text": "⚔\n              Conflict Zones\n            \n            i"
+      },
+      {
+        "layer": "conflicts",
+        "checked": true,
+        "text": "⚔\n              Conflict Zones"
+      },
+      {
+        "layer": "bases",
+        "checked": true,
+        "text": "🏛\n              Military Bases\n            \n            i"
+      },
+      {
+        "layer": "bases",
+        "checked": true,
+        "text": "🏛\n              Military Bases"
+      },
+      {
+        "layer": "nuclear",
+        "checked": true,
+        "text": "☢\n              Nuclear Sites\n            \n            i"
+      },
+      {
+        "layer": "nuclear",
+        "checked": true,
+        "text": "☢\n              Nuclear Sites"
+      },
+      {
+        "layer": "irradiators",
+        "checked": false,
+        "text": "⚠\n              Gamma Irradiators\n            \n            i"
+      },
+      {
+        "layer": "irradiators",
+        "checked": false,
+        "text": "⚠\n              Gamma Irradiators"
+      },
+      {
+        "layer": "radiationWatch",
+        "checked": false,
+        "text": "☢\n              Radiation Watch\n            \n            i"
+      },
+      {
+        "layer": "radiationWatch",
+        "checked": false,
+        "text": "☢\n              Radiation Watch"
+      },
+      {
+        "layer": "spaceports",
+        "checked": false,
+        "text": "🚀\n              Spaceports\n            \n            i"
+      },
+      {
+        "layer": "spaceports",
+        "checked": false,
+        "text": "🚀\n              Spaceports"
+      },
+      {
+        "layer": "cables",
+        "checked": false,
+        "text": "🔌\n              Undersea Cables\n            \n            i"
+      },
+      {
+        "layer": "cables",
+        "checked": false,
+        "text": "🔌\n              Undersea Cables"
+      },
+      {
+        "layer": "pipelines",
+        "checked": false,
+        "text": "🛢\n              Pipelines\n            \n            i"
+      },
+      {
+        "layer": "pipelines",
+        "checked": false,
+        "text": "🛢\n              Pipelines"
+      },
+      {
+        "layer": "storageFacilities",
+        "checked": false,
+        "text": "🏗\n              Storage Facilities\n            \n            i"
+      },
+      {
+        "layer": "storageFacilities",
+        "checked": false,
+        "text": "🏗\n              Storage Facilities"
+      },
+      {
+        "layer": "fuelShortages",
+        "checked": false,
+        "text": "⚙\n              Fuel Shortages\n            \n            i"
+      },
+      {
+        "layer": "fuelShortages",
+        "checked": false,
+        "text": "⚙\n              Fuel Shortages"
+      },
+      {
+        "layer": "datacenters",
+        "checked": false,
+        "text": "🖥\n              AI Data Centers\n            \n            i"
+      },
+      {
+        "layer": "datacenters",
+        "checked": false,
+        "text": "🖥\n              AI Data Centers"
+      },
+      {
+        "layer": "military",
+        "checked": true,
+        "text": "✈\n              Military Activity\n            \n            i"
+      },
+      {
+        "layer": "military",
+        "checked": true,
+        "text": "✈\n              Military Activity"
+      },
+      {
+        "layer": "ais",
+        "checked": false,
+        "text": "🚢\n              Ship Traffic\n            \n            i"
+      },
+      {
+        "layer": "ais",
+        "checked": false,
+        "text": "🚢\n              Ship Traffic"
+      },
+      {
+        "layer": "tradeRoutes",
+        "checked": false,
+        "text": "⚓\n              Trade Routes\n            \n            i"
+      },
+      {
+        "layer": "tradeRoutes",
+        "checked": false,
+        "text": "⚓\n              Trade Routes"
+      },
+      {
+        "layer": "flights",
+        "checked": false,
+        "text": "✈\n              Aviation\n            \n            i"
+      },
+      {
+        "layer": "flights",
+        "checked": false,
+        "text": "✈\n              Aviation"
+      },
+      {
+        "layer": "protests",
+        "checked": false,
+        "text": "📢\n              Protests\n            \n            i"
+      },
+      {
+        "layer": "protests",
+        "checked": false,
+        "text": "📢\n              Protests"
+      },
+      {
+        "layer": "ucdpEvents",
+        "checked": false,
+        "text": "⚔\n              Armed Conflict Events\n            \n            i"
+      },
+      {
+        "layer": "ucdpEvents",
+        "checked": false,
+        "text": "⚔\n              Armed Conflict Events"
+      },
+      {
+        "layer": "displacement",
+        "checked": false,
+        "text": "👥\n              Displacement Flows\n            \n            i"
+      },
+      {
+        "layer": "displacement",
+        "checked": false,
+        "text": "👥\n              Displacement Flows"
+      },
+      {
+        "layer": "climate",
+        "checked": false,
+        "text": "🌫\n              Climate Anomalies\n            \n            i"
+      },
+      {
+        "layer": "climate",
+        "checked": false,
+        "text": "🌫\n              Climate Anomalies"
+      },
+      {
+        "layer": "weather",
+        "checked": true,
+        "text": "⛈\n              Severe Weather Alerts (NWS, ECCC, WMO SWIC)\n            \n            i"
+      },
+      {
+        "layer": "weather",
+        "checked": true,
+        "text": "⛈\n              Severe Weather Alerts (NWS, ECCC, WMO SWIC)"
+      },
+      {
+        "layer": "canadaRoads",
+        "checked": false,
+        "text": "🚧\n              Canada Roads\n            \n            i"
+      },
+      {
+        "layer": "canadaRoads",
+        "checked": false,
+        "text": "🚧\n              Canada Roads"
+      },
+      {
+        "layer": "canadaAlerts",
+        "checked": true,
+        "text": "⚠\n              Canada Alerts (AB + BC + SK)\n            \n            i"
+      },
+      {
+        "layer": "canadaAlerts",
+        "checked": true,
+        "text": "⚠\n              Canada Alerts (AB + BC + SK)"
+      },
+      {
+        "layer": "outages",
+        "checked": true,
+        "text": "📡\n              Internet Disruptions\n            \n            i"
+      },
+      {
+        "layer": "outages",
+        "checked": true,
+        "text": "📡\n              Internet Disruptions"
+      },
+      {
+        "layer": "cyberThreats",
+        "checked": false,
+        "text": "🛡\n              Cyber Threats\n            \n            i"
+      },
+      {
+        "layer": "cyberThreats",
+        "checked": false,
+        "text": "🛡\n              Cyber Threats"
+      },
+      {
+        "layer": "natural",
+        "checked": true,
+        "text": "🌋\n              Natural Events\n            \n            i"
+      },
+      {
+        "layer": "natural",
+        "checked": true,
+        "text": "🌋\n              Natural Events"
+      },
+      {
+        "layer": "fires",
+        "checked": false,
+        "text": "🔥\n              Fires\n            \n            i"
+      },
+      {
+        "layer": "fires",
+        "checked": false,
+        "text": "🔥\n              Fires"
+      },
+      {
+        "layer": "waterways",
+        "checked": true,
+        "text": "⚓\n              Chokepoints\n            \n            i"
+      },
+      {
+        "layer": "waterways",
+        "checked": true,
+        "text": "⚓\n              Chokepoints"
+      },
+      {
+        "layer": "economic",
+        "checked": true,
+        "text": "💰\n              Economic Centers\n            \n            i"
+      },
+      {
+        "layer": "economic",
+        "checked": true,
+        "text": "💰\n              Economic Centers"
+      },
+      {
+        "layer": "minerals",
+        "checked": false,
+        "text": "💎\n              Critical Minerals\n            \n            i"
+      },
+      {
+        "layer": "minerals",
+        "checked": false,
+        "text": "💎\n              Critical Minerals"
+      },
+      {
+        "layer": "gpsJamming",
+        "checked": false,
+        "text": "📡\n              GPS JAMMING\n            \n            i"
+      },
+      {
+        "layer": "gpsJamming",
+        "checked": false,
+        "text": "📡\n              GPS JAMMING"
+      },
+      {
+        "layer": "satellites",
+        "checked": false,
+        "text": "🛰\n              Orbital Surveillance\n            \n            i"
+      },
+      {
+        "layer": "satellites",
+        "checked": false,
+        "text": "🛰\n              Orbital Surveillance"
+      },
+      {
+        "layer": "ciiChoropleth",
+        "checked": false,
+        "text": "🌎\n              CII Instability\n            \n            i"
+      },
+      {
+        "layer": "ciiChoropleth",
+        "checked": false,
+        "text": "🌎\n              CII Instability"
+      },
+      {
+        "layer": "resilienceScore",
+        "checked": false,
+        "text": "📈\n              Resilience 🔒\n            \n            i"
+      },
+      {
+        "layer": "resilienceScore",
+        "checked": false,
+        "text": "📈\n              Resilience 🔒"
+      },
+      {
+        "layer": "sanctions",
+        "checked": true,
+        "text": "🚫\n              Sanctions\n            \n            i"
+      },
+      {
+        "layer": "sanctions",
+        "checked": true,
+        "text": "🚫\n              Sanctions"
+      },
+      {
+        "layer": "dayNight",
+        "checked": false,
+        "text": "🌓\n              Day/Night\n            \n            i"
+      },
+      {
+        "layer": "dayNight",
+        "checked": false,
+        "text": "🌓\n              Day/Night"
+      },
+      {
+        "layer": "webcams",
+        "checked": false,
+        "text": "📷\n              Live Webcams\n            \n            i"
+      },
+      {
+        "layer": "webcams",
+        "checked": false,
+        "text": "📷\n              Live Webcams"
+      },
+      {
+        "layer": "diseaseOutbreaks",
+        "checked": false,
+        "text": "🦠\n              Disease Outbreaks\n            \n            i"
+      },
+      {
+        "layer": "diseaseOutbreaks",
+        "checked": false,
+        "text": "🦠\n              Disease Outbreaks"
+      }
+    ],
+    "canvases": [
+      {
+        "i": 0,
+        "width": 862,
+        "height": 810,
+        "css": "",
+        "rect": {
+          "x": 1,
+          "y": 118,
+          "width": 862,
+          "height": 810
+        },
+        "parent": "maplibregl-canvas-container maplibregl-interactive maplibregl-touch-drag-pan maplibregl-touch-zoom-rotate deck-widget-container"
+      }
+    ],
+    "globals": [
+      "createImageBitmap",
+      "geoDebug",
+      "deck"
+    ],
+    "geometry": [
+      {
+        "iso2": "IR",
+        "name": "Iran",
+        "type": "Polygon",
+        "bboxFromCoords": [
+          44.061372,
+          25.202094,
+          62.753564,
+          39.685279
+        ],
+        "polygonRings": 1,
+        "firstRingSignedArea": 155.85450813948978
+      },
+      {
+        "iso2": "PK",
+        "name": "Pakistan",
+        "type": "Polygon",
+        "bboxFromCoords": [
+          60.844379,
+          23.803453,
+          77.048971,
+          37.021669
+        ],
+        "polygonRings": 1,
+        "firstRingSignedArea": 81.77727573831476
+      }
+    ],
+    "bodyText": "World Monitor — Real-Time Global Intelligence Dashboard\n\nWorld Monitor is the full-spectrum real-time global intelligence dashboard: one browser workspace that combines geopolitical conflict tracking, military and civil aviation, maritime AIS, undersea cable and infrastructure maps, markets, climate hazards, cyber signals, and open-source news into a single live situation picture. Analysts, journalists, researchers, and operators use it to see how distant events connect before they harden into headlines.\n\nOn the map you can follow conflict zones and protest activity alongside earthquake and wildfire alerts, power-outage clusters, and strategic infrastructure such as military bases, nuclear facilities, and subsea cables. Aviation layers surface military and commercial flights; maritime layers track ships through chokepoints and high-risk waters. Country deep-dives open resilience, risk, and source-backed context for more than 190 states without leaving the dashboard.\n\nMarket and prediction panels sit beside the geospatial view so price moves, central-bank signals, commodities, and prediction-market odds can be read against the same map context that shows tankers, jets, and crisis corridors. Government-spending and macro indicators help separate noise from policy-relevant shifts. The goal is not another news feed — it is a continuously updating OSINT workbench with auditable upstream sources.\n\nReference surfaces outside the live map keep the same evidence standard: country intelligence pages, maritime chokepoint briefs, crisis trackers, live tools, research reports, and an audited source catalog. Agents and developers can also use the MCP server and REST API documented on the site. World Monitor is open source and free to start; Pro unlocks deeper analysis without hiding "
+  },
+  "conflictState": {
+    "label": "02-conflicts-2d",
+    "url": "http://127.0.0.1:4187/?lat=20.0000&lon=0.0000&zoom=1.50&view=global&timeRange=7d&layers=conflicts%2Cbases%2Chotspots%2Cnuclear%2Csanctions%2Cweather%2CcanadaAlerts%2Ceconomic%2Cwaterways%2Coutages%2Cmilitary%2Cnatural",
+    "map": {
+      "className": "map-container deckgl-mode",
+      "html": "<div class=\"deckgl-map-wrapper\" id=\"deckglMapWrapper\" style=\"position: relative; width: 100%; height: 100%; overflow: hidden;\"><div id=\"deckgl-basemap\" class=\"maplibregl-map\" style=\"position: absolute; top: 0px; left: 0px; width: 100%; height: 100%;\"><div class=\"maplibregl-canvas-container maplibregl-interactive maplibregl-touch-drag-pan maplibregl-touch-zoom-rotate deck-widget-container\"><canvas class=\"maplibregl-canvas\" tabindex=\"0\" aria-label=\"Map\" role=\"region\" width=\"862\" height=\"789\" style=\"width: 862px; height: 789px; touch-action: unset; user-select: none; -webkit-user-drag: none; -webkit-tap-highlight-color: rgba(0, 0, 0, 0); outline: none; cursor: grab;\"></canvas><div style=\"pointer-events: none; position: absolute; overflow: hidden; display: block; left: 0px; top: 0px; width: 862px; height: 789px;\"><div class=\"fill\" style=\"position: absolute; z-index: 2; inset: 0px;\"><div class=\"deck-tooltip\" style=\"z-index: 1; position: absolute; pointer-events: none; color: rgb(160, 167, 180); background-color: rgb(41, 50, 60); padding: 10px; top: 0px; left: 0px; display: none;\"></div></div></div></div><div class=\"maplibregl-control-container\"><div class=\"maplibregl-ctrl-top-left \"><di"
+    },
+    "modeButtons": [
+      {
+        "mode": "flat",
+        "active": true,
+        "title": "2D Map"
+      },
+      {
+        "mode": "globe",
+        "active": false,
+        "title": "3D Globe"
+      }
+    ],
+    "toggles": [
+      {
+        "layer": "hotspots",
+        "checked": true,
+        "text": "🎯\n              Intel Hotspots\n            \n            i"
+      },
+      {
+        "layer": "hotspots",
+        "checked": true,
+        "text": "🎯\n              Intel Hotspots"
+      },
+      {
+        "layer": "conflicts",
+        "checked": true,
+        "text": "⚔\n              Conflict Zones\n            \n            i"
+      },
+      {
+        "layer": "conflicts",
+        "checked": true,
+        "text": "⚔\n              Conflict Zones"
+      },
+      {
+        "layer": "bases",
+        "checked": true,
+        "text": "🏛\n              Military Bases\n            \n            i"
+      },
+      {
+        "layer": "bases",
+        "checked": true,
+        "text": "🏛\n              Military Bases"
+      },
+      {
+        "layer": "nuclear",
+        "checked": true,
+        "text": "☢\n              Nuclear Sites\n            \n            i"
+      },
+      {
+        "layer": "nuclear",
+        "checked": true,
+        "text": "☢\n              Nuclear Sites"
+      },
+      {
+        "layer": "irradiators",
+        "checked": false,
+        "text": "⚠\n              Gamma Irradiators\n            \n            i"
+      },
+      {
+        "layer": "irradiators",
+        "checked": false,
+        "text": "⚠\n              Gamma Irradiators"
+      },
+      {
+        "layer": "radiationWatch",
+        "checked": false,
+        "text": "☢\n              Radiation Watch\n            \n            i"
+      },
+      {
+        "layer": "radiationWatch",
+        "checked": false,
+        "text": "☢\n              Radiation Watch"
+      },
+      {
+        "layer": "spaceports",
+        "checked": false,
+        "text": "🚀\n              Spaceports\n            \n            i"
+      },
+      {
+        "layer": "spaceports",
+        "checked": false,
+        "text": "🚀\n              Spaceports"
+      },
+      {
+        "layer": "cables",
+        "checked": false,
+        "text": "🔌\n              Undersea Cables\n            \n            i"
+      },
+      {
+        "layer": "cables",
+        "checked": false,
+        "text": "🔌\n              Undersea Cables"
+      },
+      {
+        "layer": "pipelines",
+        "checked": false,
+        "text": "🛢\n              Pipelines\n            \n            i"
+      },
+      {
+        "layer": "pipelines",
+        "checked": false,
+        "text": "🛢\n              Pipelines"
+      },
+      {
+        "layer": "storageFacilities",
+        "checked": false,
+        "text": "🏗\n              Storage Facilities\n            \n            i"
+      },
+      {
+        "layer": "storageFacilities",
+        "checked": false,
+        "text": "🏗\n              Storage Facilities"
+      },
+      {
+        "layer": "fuelShortages",
+        "checked": false,
+        "text": "⚙\n              Fuel Shortages\n            \n            i"
+      },
+      {
+        "layer": "fuelShortages",
+        "checked": false,
+        "text": "⚙\n              Fuel Shortages"
+      },
+      {
+        "layer": "datacenters",
+        "checked": false,
+        "text": "🖥\n              AI Data Centers\n            \n            i"
+      },
+      {
+        "layer": "datacenters",
+        "checked": false,
+        "text": "🖥\n              AI Data Centers"
+      },
+      {
+        "layer": "military",
+        "checked": true,
+        "text": "✈\n              Military Activity\n            \n            i"
+      },
+      {
+        "layer": "military",
+        "checked": true,
+        "text": "✈\n              Military Activity"
+      },
+      {
+        "layer": "ais",
+        "checked": false,
+        "text": "🚢\n              Ship Traffic\n            \n            i"
+      },
+      {
+        "layer": "ais",
+        "checked": false,
+        "text": "🚢\n              Ship Traffic"
+      },
+      {
+        "layer": "tradeRoutes",
+        "checked": false,
+        "text": "⚓\n              Trade Routes\n            \n            i"
+      },
+      {
+        "layer": "tradeRoutes",
+        "checked": false,
+        "text": "⚓\n              Trade Routes"
+      },
+      {
+        "layer": "flights",
+        "checked": false,
+        "text": "✈\n              Aviation\n            \n            i"
+      },
+      {
+        "layer": "flights",
+        "checked": false,
+        "text": "✈\n              Aviation"
+      },
+      {
+        "layer": "protests",
+        "checked": false,
+        "text": "📢\n              Protests\n            \n            i"
+      },
+      {
+        "layer": "protests",
+        "checked": false,
+        "text": "📢\n              Protests"
+      },
+      {
+        "layer": "ucdpEvents",
+        "checked": false,
+        "text": "⚔\n              Armed Conflict Events\n            \n            i"
+      },
+      {
+        "layer": "ucdpEvents",
+        "checked": false,
+        "text": "⚔\n              Armed Conflict Events"
+      },
+      {
+        "layer": "displacement",
+        "checked": false,
+        "text": "👥\n              Displacement Flows\n            \n            i"
+      },
+      {
+        "layer": "displacement",
+        "checked": false,
+        "text": "👥\n              Displacement Flows"
+      },
+      {
+        "layer": "climate",
+        "checked": false,
+        "text": "🌫\n              Climate Anomalies\n            \n            i"
+      },
+      {
+        "layer": "climate",
+        "checked": false,
+        "text": "🌫\n              Climate Anomalies"
+      },
+      {
+        "layer": "weather",
+        "checked": true,
+        "text": "⛈\n              Severe Weather Alerts (NWS, ECCC, WMO SWIC)\n            \n            i"
+      },
+      {
+        "layer": "weather",
+        "checked": true,
+        "text": "⛈\n              Severe Weather Alerts (NWS, ECCC, WMO SWIC)"
+      },
+      {
+        "layer": "canadaRoads",
+        "checked": false,
+        "text": "🚧\n              Canada Roads\n            \n            i"
+      },
+      {
+        "layer": "canadaRoads",
+        "checked": false,
+        "text": "🚧\n              Canada Roads"
+      },
+      {
+        "layer": "canadaAlerts",
+        "checked": true,
+        "text": "⚠\n              Canada Alerts (AB + BC + SK)\n            \n            i"
+      },
+      {
+        "layer": "canadaAlerts",
+        "checked": true,
+        "text": "⚠\n              Canada Alerts (AB + BC + SK)"
+      },
+      {
+        "layer": "outages",
+        "checked": true,
+        "text": "📡\n              Internet Disruptions\n            \n            i"
+      },
+      {
+        "layer": "outages",
+        "checked": true,
+        "text": "📡\n              Internet Disruptions"
+      },
+      {
+        "layer": "cyberThreats",
+        "checked": false,
+        "text": "🛡\n              Cyber Threats\n            \n            i"
+      },
+      {
+        "layer": "cyberThreats",
+        "checked": false,
+        "text": "🛡\n              Cyber Threats"
+      },
+      {
+        "layer": "natural",
+        "checked": true,
+        "text": "🌋\n              Natural Events\n            \n            i"
+      },
+      {
+        "layer": "natural",
+        "checked": true,
+        "text": "🌋\n              Natural Events"
+      },
+      {
+        "layer": "fires",
+        "checked": false,
+        "text": "🔥\n              Fires\n            \n            i"
+      },
+      {
+        "layer": "fires",
+        "checked": false,
+        "text": "🔥\n              Fires"
+      },
+      {
+        "layer": "waterways",
+        "checked": true,
+        "text": "⚓\n              Chokepoints\n            \n            i"
+      },
+      {
+        "layer": "waterways",
+        "checked": true,
+        "text": "⚓\n              Chokepoints"
+      },
+      {
+        "layer": "economic",
+        "checked": true,
+        "text": "💰\n              Economic Centers\n            \n            i"
+      },
+      {
+        "layer": "economic",
+        "checked": true,
+        "text": "💰\n              Economic Centers"
+      },
+      {
+        "layer": "minerals",
+        "checked": false,
+        "text": "💎\n              Critical Minerals\n            \n            i"
+      },
+      {
+        "layer": "minerals",
+        "checked": false,
+        "text": "💎\n              Critical Minerals"
+      },
+      {
+        "layer": "gpsJamming",
+        "checked": false,
+        "text": "📡\n              GPS JAMMING\n            \n            i"
+      },
+      {
+        "layer": "gpsJamming",
+        "checked": false,
+        "text": "📡\n              GPS JAMMING"
+      },
+      {
+        "layer": "satellites",
+        "checked": false,
+        "text": "🛰\n              Orbital Surveillance\n            \n            i"
+      },
+      {
+        "layer": "satellites",
+        "checked": false,
+        "text": "🛰\n              Orbital Surveillance"
+      },
+      {
+        "layer": "ciiChoropleth",
+        "checked": false,
+        "text": "🌎\n              CII Instability\n            \n            i"
+      },
+      {
+        "layer": "ciiChoropleth",
+        "checked": false,
+        "text": "🌎\n              CII Instability"
+      },
+      {
+        "layer": "resilienceScore",
+        "checked": false,
+        "text": "📈\n              Resilience 🔒\n            \n            i"
+      },
+      {
+        "layer": "resilienceScore",
+        "checked": false,
+        "text": "📈\n              Resilience 🔒"
+      },
+      {
+        "layer": "sanctions",
+        "checked": true,
+        "text": "🚫\n              Sanctions\n            \n            i"
+      },
+      {
+        "layer": "sanctions",
+        "checked": true,
+        "text": "🚫\n              Sanctions"
+      },
+      {
+        "layer": "dayNight",
+        "checked": false,
+        "text": "🌓\n              Day/Night\n            \n            i"
+      },
+      {
+        "layer": "dayNight",
+        "checked": false,
+        "text": "🌓\n              Day/Night"
+      },
+      {
+        "layer": "webcams",
+        "checked": false,
+        "text": "📷\n              Live Webcams\n            \n            i"
+      },
+      {
+        "layer": "webcams",
+        "checked": false,
+        "text": "📷\n              Live Webcams"
+      },
+      {
+        "layer": "diseaseOutbreaks",
+        "checked": false,
+        "text": "🦠\n              Disease Outbreaks\n            \n            i"
+      },
+      {
+        "layer": "diseaseOutbreaks",
+        "checked": false,
+        "text": "🦠\n              Disease Outbreaks"
+      }
+    ],
+    "canvases": [
+      {
+        "i": 0,
+        "width": 862,
+        "height": 789,
+        "css": "",
+        "rect": {
+          "x": 1,
+          "y": 118,
+          "width": 862,
+          "height": 789
+        },
+        "parent": "maplibregl-canvas-container maplibregl-interactive maplibregl-touch-drag-pan maplibregl-touch-zoom-rotate deck-widget-container"
+      }
+    ],
+    "globals": [
+      "createImageBitmap",
+      "geoDebug",
+      "deck"
+    ],
+    "geometry": [
+      {
+        "iso2": "IR",
+        "name": "Iran",
+        "type": "Polygon",
+        "bboxFromCoords": [
+          44.061372,
+          25.202094,
+          62.753564,
+          39.685279
+        ],
+        "polygonRings": 1,
+        "firstRingSignedArea": 155.85450813948978
+      },
+      {
+        "iso2": "PK",
+        "name": "Pakistan",
+        "type": "Polygon",
+        "bboxFromCoords": [
+          60.844379,
+          23.803453,
+          77.048971,
+          37.021669
+        ],
+        "polygonRings": 1,
+        "firstRingSignedArea": 81.77727573831476
+      }
+    ],
+    "bodyText": "World Monitor — Real-Time Global Intelligence Dashboard\n\nWorld Monitor is the full-spectrum real-time global intelligence dashboard: one browser workspace that combines geopolitical conflict tracking, military and civil aviation, maritime AIS, undersea cable and infrastructure maps, markets, climate hazards, cyber signals, and open-source news into a single live situation picture. Analysts, journalists, researchers, and operators use it to see how distant events connect before they harden into headlines.\n\nOn the map you can follow conflict zones and protest activity alongside earthquake and wildfire alerts, power-outage clusters, and strategic infrastructure such as military bases, nuclear facilities, and subsea cables. Aviation layers surface military and commercial flights; maritime layers track ships through chokepoints and high-risk waters. Country deep-dives open resilience, risk, and source-backed context for more than 190 states without leaving the dashboard.\n\nMarket and prediction panels sit beside the geospatial view so price moves, central-bank signals, commodities, and prediction-market odds can be read against the same map context that shows tankers, jets, and crisis corridors. Government-spending and macro indicators help separate noise from policy-relevant shifts. The goal is not another news feed — it is a continuously updating OSINT workbench with auditable upstream sources.\n\nReference surfaces outside the live map keep the same evidence standard: country intelligence pages, maritime chokepoint briefs, crisis trackers, live tools, research reports, and an audited source catalog. Agents and developers can also use the MCP server and REST API documented on the site. World Monitor is open source and free to start; Pro unlocks deeper analysis without hiding "
+  },
+  "focused2d": {
+    "label": "03-iran-focused-2d",
+    "url": "http://127.0.0.1:4187/?lat=20.0000&lon=0.0000&zoom=1.50&view=global&timeRange=7d&layers=conflicts%2Cbases%2Chotspots%2Cnuclear%2Csanctions%2Cweather%2CcanadaAlerts%2Ceconomic%2Cwaterways%2Coutages%2Cmilitary%2Cnatural",
+    "map": {
+      "className": "map-container deckgl-mode",
+      "html": "<div class=\"deckgl-map-wrapper\" id=\"deckglMapWrapper\" style=\"position: relative; width: 100%; height: 100%; overflow: hidden;\"><div id=\"deckgl-basemap\" class=\"maplibregl-map\" style=\"position: absolute; top: 0px; left: 0px; width: 100%; height: 100%;\"><div class=\"maplibregl-canvas-container maplibregl-interactive maplibregl-touch-drag-pan maplibregl-touch-zoom-rotate deck-widget-container\"><canvas class=\"maplibregl-canvas\" tabindex=\"0\" aria-label=\"Map\" role=\"region\" width=\"862\" height=\"789\" style=\"width: 862px; height: 789px; touch-action: unset; user-select: none; -webkit-user-drag: none; -webkit-tap-highlight-color: rgba(0, 0, 0, 0); outline: none; cursor: grab;\"></canvas><div style=\"pointer-events: none; position: absolute; overflow: hidden; display: block; left: 0px; top: 0px; width: 862px; height: 789px;\"><div class=\"fill\" style=\"position: absolute; z-index: 2; inset: 0px;\"><div class=\"deck-tooltip\" style=\"z-index: 1; position: absolute; pointer-events: none; color: rgb(160, 167, 180); background-color: rgb(41, 50, 60); padding: 10px; top: 0px; left: 0px; display: none;\"></div></div></div></div><div class=\"maplibregl-control-container\"><div class=\"maplibregl-ctrl-top-left \"><di"
+    },
+    "modeButtons": [
+      {
+        "mode": "flat",
+        "active": true,
+        "title": "2D Map"
+      },
+      {
+        "mode": "globe",
+        "active": false,
+        "title": "3D Globe"
+      }
+    ],
+    "toggles": [
+      {
+        "layer": "hotspots",
+        "checked": true,
+        "text": "🎯\n              Intel Hotspots\n            \n            i"
+      },
+      {
+        "layer": "hotspots",
+        "checked": true,
+        "text": "🎯\n              Intel Hotspots"
+      },
+      {
+        "layer": "conflicts",
+        "checked": true,
+        "text": "⚔\n              Conflict Zones\n            \n            i"
+      },
+      {
+        "layer": "conflicts",
+        "checked": true,
+        "text": "⚔\n              Conflict Zones"
+      },
+      {
+        "layer": "bases",
+        "checked": true,
+        "text": "🏛\n              Military Bases\n            \n            i"
+      },
+      {
+        "layer": "bases",
+        "checked": true,
+        "text": "🏛\n              Military Bases"
+      },
+      {
+        "layer": "nuclear",
+        "checked": true,
+        "text": "☢\n              Nuclear Sites\n            \n            i"
+      },
+      {
+        "layer": "nuclear",
+        "checked": true,
+        "text": "☢\n              Nuclear Sites"
+      },
+      {
+        "layer": "irradiators",
+        "checked": false,
+        "text": "⚠\n              Gamma Irradiators\n            \n            i"
+      },
+      {
+        "layer": "irradiators",
+        "checked": false,
+        "text": "⚠\n              Gamma Irradiators"
+      },
+      {
+        "layer": "radiationWatch",
+        "checked": false,
+        "text": "☢\n              Radiation Watch\n            \n            i"
+      },
+      {
+        "layer": "radiationWatch",
+        "checked": false,
+        "text": "☢\n              Radiation Watch"
+      },
+      {
+        "layer": "spaceports",
+        "checked": false,
+        "text": "🚀\n              Spaceports\n            \n            i"
+      },
+      {
+        "layer": "spaceports",
+        "checked": false,
+        "text": "🚀\n              Spaceports"
+      },
+      {
+        "layer": "cables",
+        "checked": false,
+        "text": "🔌\n              Undersea Cables\n            \n            i"
+      },
+      {
+        "layer": "cables",
+        "checked": false,
+        "text": "🔌\n              Undersea Cables"
+      },
+      {
+        "layer": "pipelines",
+        "checked": false,
+        "text": "🛢\n              Pipelines\n            \n            i"
+      },
+      {
+        "layer": "pipelines",
+        "checked": false,
+        "text": "🛢\n              Pipelines"
+      },
+      {
+        "layer": "storageFacilities",
+        "checked": false,
+        "text": "🏗\n              Storage Facilities\n            \n            i"
+      },
+      {
+        "layer": "storageFacilities",
+        "checked": false,
+        "text": "🏗\n              Storage Facilities"
+      },
+      {
+        "layer": "fuelShortages",
+        "checked": false,
+        "text": "⚙\n              Fuel Shortages\n            \n            i"
+      },
+      {
+        "layer": "fuelShortages",
+        "checked": false,
+        "text": "⚙\n              Fuel Shortages"
+      },
+      {
+        "layer": "datacenters",
+        "checked": false,
+        "text": "🖥\n              AI Data Centers\n            \n            i"
+      },
+      {
+        "layer": "datacenters",
+        "checked": false,
+        "text": "🖥\n              AI Data Centers"
+      },
+      {
+        "layer": "military",
+        "checked": true,
+        "text": "✈\n              Military Activity\n            \n            i"
+      },
+      {
+        "layer": "military",
+        "checked": true,
+        "text": "✈\n              Military Activity"
+      },
+      {
+        "layer": "ais",
+        "checked": false,
+        "text": "🚢\n              Ship Traffic\n            \n            i"
+      },
+      {
+        "layer": "ais",
+        "checked": false,
+        "text": "🚢\n              Ship Traffic"
+      },
+      {
+        "layer": "tradeRoutes",
+        "checked": false,
+        "text": "⚓\n              Trade Routes\n            \n            i"
+      },
+      {
+        "layer": "tradeRoutes",
+        "checked": false,
+        "text": "⚓\n              Trade Routes"
+      },
+      {
+        "layer": "flights",
+        "checked": false,
+        "text": "✈\n              Aviation\n            \n            i"
+      },
+      {
+        "layer": "flights",
+        "checked": false,
+        "text": "✈\n              Aviation"
+      },
+      {
+        "layer": "protests",
+        "checked": false,
+        "text": "📢\n              Protests\n            \n            i"
+      },
+      {
+        "layer": "protests",
+        "checked": false,
+        "text": "📢\n              Protests"
+      },
+      {
+        "layer": "ucdpEvents",
+        "checked": false,
+        "text": "⚔\n              Armed Conflict Events\n            \n            i"
+      },
+      {
+        "layer": "ucdpEvents",
+        "checked": false,
+        "text": "⚔\n              Armed Conflict Events"
+      },
+      {
+        "layer": "displacement",
+        "checked": false,
+        "text": "👥\n              Displacement Flows\n            \n            i"
+      },
+      {
+        "layer": "displacement",
+        "checked": false,
+        "text": "👥\n              Displacement Flows"
+      },
+      {
+        "layer": "climate",
+        "checked": false,
+        "text": "🌫\n              Climate Anomalies\n            \n            i"
+      },
+      {
+        "layer": "climate",
+        "checked": false,
+        "text": "🌫\n              Climate Anomalies"
+      },
+      {
+        "layer": "weather",
+        "checked": true,
+        "text": "⛈\n              Severe Weather Alerts (NWS, ECCC, WMO SWIC)\n            \n            i"
+      },
+      {
+        "layer": "weather",
+        "checked": true,
+        "text": "⛈\n              Severe Weather Alerts (NWS, ECCC, WMO SWIC)"
+      },
+      {
+        "layer": "canadaRoads",
+        "checked": false,
+        "text": "🚧\n              Canada Roads\n            \n            i"
+      },
+      {
+        "layer": "canadaRoads",
+        "checked": false,
+        "text": "🚧\n              Canada Roads"
+      },
+      {
+        "layer": "canadaAlerts",
+        "checked": true,
+        "text": "⚠\n              Canada Alerts (AB + BC + SK)\n            \n            i"
+      },
+      {
+        "layer": "canadaAlerts",
+        "checked": true,
+        "text": "⚠\n              Canada Alerts (AB + BC + SK)"
+      },
+      {
+        "layer": "outages",
+        "checked": true,
+        "text": "📡\n              Internet Disruptions\n            \n            i"
+      },
+      {
+        "layer": "outages",
+        "checked": true,
+        "text": "📡\n              Internet Disruptions"
+      },
+      {
+        "layer": "cyberThreats",
+        "checked": false,
+        "text": "🛡\n              Cyber Threats\n            \n            i"
+      },
+      {
+        "layer": "cyberThreats",
+        "checked": false,
+        "text": "🛡\n              Cyber Threats"
+      },
+      {
+        "layer": "natural",
+        "checked": true,
+        "text": "🌋\n              Natural Events\n            \n            i"
+      },
+      {
+        "layer": "natural",
+        "checked": true,
+        "text": "🌋\n              Natural Events"
+      },
+      {
+        "layer": "fires",
+        "checked": false,
+        "text": "🔥\n              Fires\n            \n            i"
+      },
+      {
+        "layer": "fires",
+        "checked": false,
+        "text": "🔥\n              Fires"
+      },
+      {
+        "layer": "waterways",
+        "checked": true,
+        "text": "⚓\n              Chokepoints\n            \n            i"
+      },
+      {
+        "layer": "waterways",
+        "checked": true,
+        "text": "⚓\n              Chokepoints"
+      },
+      {
+        "layer": "economic",
+        "checked": true,
+        "text": "💰\n              Economic Centers\n            \n            i"
+      },
+      {
+        "layer": "economic",
+        "checked": true,
+        "text": "💰\n              Economic Centers"
+      },
+      {
+        "layer": "minerals",
+        "checked": false,
+        "text": "💎\n              Critical Minerals\n            \n            i"
+      },
+      {
+        "layer": "minerals",
+        "checked": false,
+        "text": "💎\n              Critical Minerals"
+      },
+      {
+        "layer": "gpsJamming",
+        "checked": false,
+        "text": "📡\n              GPS JAMMING\n            \n            i"
+      },
+      {
+        "layer": "gpsJamming",
+        "checked": false,
+        "text": "📡\n              GPS JAMMING"
+      },
+      {
+        "layer": "satellites",
+        "checked": false,
+        "text": "🛰\n              Orbital Surveillance\n            \n            i"
+      },
+      {
+        "layer": "satellites",
+        "checked": false,
+        "text": "🛰\n              Orbital Surveillance"
+      },
+      {
+        "layer": "ciiChoropleth",
+        "checked": false,
+        "text": "🌎\n              CII Instability\n            \n            i"
+      },
+      {
+        "layer": "ciiChoropleth",
+        "checked": false,
+        "text": "🌎\n              CII Instability"
+      },
+      {
+        "layer": "resilienceScore",
+        "checked": false,
+        "text": "📈\n              Resilience 🔒\n            \n            i"
+      },
+      {
+        "layer": "resilienceScore",
+        "checked": false,
+        "text": "📈\n              Resilience 🔒"
+      },
+      {
+        "layer": "sanctions",
+        "checked": true,
+        "text": "🚫\n              Sanctions\n            \n            i"
+      },
+      {
+        "layer": "sanctions",
+        "checked": true,
+        "text": "🚫\n              Sanctions"
+      },
+      {
+        "layer": "dayNight",
+        "checked": false,
+        "text": "🌓\n              Day/Night\n            \n            i"
+      },
+      {
+        "layer": "dayNight",
+        "checked": false,
+        "text": "🌓\n              Day/Night"
+      },
+      {
+        "layer": "webcams",
+        "checked": false,
+        "text": "📷\n              Live Webcams\n            \n            i"
+      },
+      {
+        "layer": "webcams",
+        "checked": false,
+        "text": "📷\n              Live Webcams"
+      },
+      {
+        "layer": "diseaseOutbreaks",
+        "checked": false,
+        "text": "🦠\n              Disease Outbreaks\n            \n            i"
+      },
+      {
+        "layer": "diseaseOutbreaks",
+        "checked": false,
+        "text": "🦠\n              Disease Outbreaks"
+      }
+    ],
+    "canvases": [
+      {
+        "i": 0,
+        "width": 862,
+        "height": 789,
+        "css": "",
+        "rect": {
+          "x": 1,
+          "y": 118,
+          "width": 862,
+          "height": 789
+        },
+        "parent": "maplibregl-canvas-container maplibregl-interactive maplibregl-touch-drag-pan maplibregl-touch-zoom-rotate deck-widget-container"
+      }
+    ],
+    "globals": [
+      "createImageBitmap",
+      "geoDebug",
+      "deck"
+    ],
+    "geometry": [
+      {
+        "iso2": "IR",
+        "name": "Iran",
+        "type": "Polygon",
+        "bboxFromCoords": [
+          44.061372,
+          25.202094,
+          62.753564,
+          39.685279
+        ],
+        "polygonRings": 1,
+        "firstRingSignedArea": 155.85450813948978
+      },
+      {
+        "iso2": "PK",
+        "name": "Pakistan",
+        "type": "Polygon",
+        "bboxFromCoords": [
+          60.844379,
+          23.803453,
+          77.048971,
+          37.021669
+        ],
+        "polygonRings": 1,
+        "firstRingSignedArea": 81.77727573831476
+      }
+    ],
+    "bodyText": "World Monitor — Real-Time Global Intelligence Dashboard\n\nWorld Monitor is the full-spectrum real-time global intelligence dashboard: one browser workspace that combines geopolitical conflict tracking, military and civil aviation, maritime AIS, undersea cable and infrastructure maps, markets, climate hazards, cyber signals, and open-source news into a single live situation picture. Analysts, journalists, researchers, and operators use it to see how distant events connect before they harden into headlines.\n\nOn the map you can follow conflict zones and protest activity alongside earthquake and wildfire alerts, power-outage clusters, and strategic infrastructure such as military bases, nuclear facilities, and subsea cables. Aviation layers surface military and commercial flights; maritime layers track ships through chokepoints and high-risk waters. Country deep-dives open resilience, risk, and source-backed context for more than 190 states without leaving the dashboard.\n\nMarket and prediction panels sit beside the geospatial view so price moves, central-bank signals, commodities, and prediction-market odds can be read against the same map context that shows tankers, jets, and crisis corridors. Government-spending and macro indicators help separate noise from policy-relevant shifts. The goal is not another news feed — it is a continuously updating OSINT workbench with auditable upstream sources.\n\nReference surfaces outside the live map keep the same evidence standard: country intelligence pages, maritime chokepoint briefs, crisis trackers, live tools, research reports, and an audited source catalog. Agents and developers can also use the MCP server and REST API documented on the site. World Monitor is open source and free to start; Pro unlocks deeper analysis without hiding "
+  },
+  "globe": {
+    "label": "04-iran-focused-3d",
+    "url": "http://127.0.0.1:4187/?lat=20.0000&lon=0.0000&zoom=1.50&view=global&timeRange=7d&layers=conflicts%2Cbases%2Chotspots%2Cnuclear%2Csanctions%2Cweather%2CcanadaAlerts%2Ceconomic%2Cwaterways%2Coutages%2Cmilitary%2Cnatural",
+    "map": {
+      "className": "map-container deckgl-mode",
+      "html": "<div class=\"deckgl-map-wrapper\" id=\"deckglMapWrapper\" style=\"position: relative; width: 100%; height: 100%; overflow: hidden;\"><div id=\"deckgl-basemap\" class=\"maplibregl-map\" style=\"position: absolute; top: 0px; left: 0px; width: 100%; height: 100%;\"><div class=\"maplibregl-canvas-container maplibregl-interactive maplibregl-touch-drag-pan maplibregl-touch-zoom-rotate deck-widget-container\"><canvas class=\"maplibregl-canvas\" tabindex=\"0\" aria-label=\"Map\" role=\"region\" width=\"862\" height=\"789\" style=\"width: 862px; height: 789px; touch-action: unset; user-select: none; -webkit-user-drag: none; -webkit-tap-highlight-color: rgba(0, 0, 0, 0); outline: none; cursor: grab;\"></canvas><div style=\"pointer-events: none; position: absolute; overflow: hidden; display: block; left: 0px; top: 0px; width: 862px; height: 789px;\"><div class=\"fill\" style=\"position: absolute; z-index: 2; inset: 0px;\"><div class=\"deck-tooltip\" style=\"z-index: 1; position: absolute; pointer-events: none; color: rgb(160, 167, 180); background-color: rgb(41, 50, 60); padding: 10px; top: 0px; left: 0px; display: none;\"></div></div></div></div><div class=\"maplibregl-control-container\"><div class=\"maplibregl-ctrl-top-left \"><di"
+    },
+    "modeButtons": [
+      {
+        "mode": "flat",
+        "active": true,
+        "title": "2D Map"
+      },
+      {
+        "mode": "globe",
+        "active": false,
+        "title": "3D Globe"
+      }
+    ],
+    "toggles": [
+      {
+        "layer": "hotspots",
+        "checked": true,
+        "text": "🎯\n              Intel Hotspots\n            \n            i"
+      },
+      {
+        "layer": "hotspots",
+        "checked": true,
+        "text": "🎯\n              Intel Hotspots"
+      },
+      {
+        "layer": "conflicts",
+        "checked": true,
+        "text": "⚔\n              Conflict Zones\n            \n            i"
+      },
+      {
+        "layer": "conflicts",
+        "checked": true,
+        "text": "⚔\n              Conflict Zones"
+      },
+      {
+        "layer": "bases",
+        "checked": true,
+        "text": "🏛\n              Military Bases\n            \n            i"
+      },
+      {
+        "layer": "bases",
+        "checked": true,
+        "text": "🏛\n              Military Bases"
+      },
+      {
+        "layer": "nuclear",
+        "checked": true,
+        "text": "☢\n              Nuclear Sites\n            \n            i"
+      },
+      {
+        "layer": "nuclear",
+        "checked": true,
+        "text": "☢\n              Nuclear Sites"
+      },
+      {
+        "layer": "irradiators",
+        "checked": false,
+        "text": "⚠\n              Gamma Irradiators\n            \n            i"
+      },
+      {
+        "layer": "irradiators",
+        "checked": false,
+        "text": "⚠\n              Gamma Irradiators"
+      },
+      {
+        "layer": "radiationWatch",
+        "checked": false,
+        "text": "☢\n              Radiation Watch\n            \n            i"
+      },
+      {
+        "layer": "radiationWatch",
+        "checked": false,
+        "text": "☢\n              Radiation Watch"
+      },
+      {
+        "layer": "spaceports",
+        "checked": false,
+        "text": "🚀\n              Spaceports\n            \n            i"
+      },
+      {
+        "layer": "spaceports",
+        "checked": false,
+        "text": "🚀\n              Spaceports"
+      },
+      {
+        "layer": "cables",
+        "checked": false,
+        "text": "🔌\n              Undersea Cables\n            \n            i"
+      },
+      {
+        "layer": "cables",
+        "checked": false,
+        "text": "🔌\n              Undersea Cables"
+      },
+      {
+        "layer": "pipelines",
+        "checked": false,
+        "text": "🛢\n              Pipelines\n            \n            i"
+      },
+      {
+        "layer": "pipelines",
+        "checked": false,
+        "text": "🛢\n              Pipelines"
+      },
+      {
+        "layer": "storageFacilities",
+        "checked": false,
+        "text": "🏗\n              Storage Facilities\n            \n            i"
+      },
+      {
+        "layer": "storageFacilities",
+        "checked": false,
+        "text": "🏗\n              Storage Facilities"
+      },
+      {
+        "layer": "fuelShortages",
+        "checked": false,
+        "text": "⚙\n              Fuel Shortages\n            \n            i"
+      },
+      {
+        "layer": "fuelShortages",
+        "checked": false,
+        "text": "⚙\n              Fuel Shortages"
+      },
+      {
+        "layer": "datacenters",
+        "checked": false,
+        "text": "🖥\n              AI Data Centers\n            \n            i"
+      },
+      {
+        "layer": "datacenters",
+        "checked": false,
+        "text": "🖥\n              AI Data Centers"
+      },
+      {
+        "layer": "military",
+        "checked": true,
+        "text": "✈\n              Military Activity\n            \n            i"
+      },
+      {
+        "layer": "military",
+        "checked": true,
+        "text": "✈\n              Military Activity"
+      },
+      {
+        "layer": "ais",
+        "checked": false,
+        "text": "🚢\n              Ship Traffic\n            \n            i"
+      },
+      {
+        "layer": "ais",
+        "checked": false,
+        "text": "🚢\n              Ship Traffic"
+      },
+      {
+        "layer": "tradeRoutes",
+        "checked": false,
+        "text": "⚓\n              Trade Routes\n            \n            i"
+      },
+      {
+        "layer": "tradeRoutes",
+        "checked": false,
+        "text": "⚓\n              Trade Routes"
+      },
+      {
+        "layer": "flights",
+        "checked": false,
+        "text": "✈\n              Aviation\n            \n            i"
+      },
+      {
+        "layer": "flights",
+        "checked": false,
+        "text": "✈\n              Aviation"
+      },
+      {
+        "layer": "protests",
+        "checked": false,
+        "text": "📢\n              Protests\n            \n            i"
+      },
+      {
+        "layer": "protests",
+        "checked": false,
+        "text": "📢\n              Protests"
+      },
+      {
+        "layer": "ucdpEvents",
+        "checked": false,
+        "text": "⚔\n              Armed Conflict Events\n            \n            i"
+      },
+      {
+        "layer": "ucdpEvents",
+        "checked": false,
+        "text": "⚔\n              Armed Conflict Events"
+      },
+      {
+        "layer": "displacement",
+        "checked": false,
+        "text": "👥\n              Displacement Flows\n            \n            i"
+      },
+      {
+        "layer": "displacement",
+        "checked": false,
+        "text": "👥\n              Displacement Flows"
+      },
+      {
+        "layer": "climate",
+        "checked": false,
+        "text": "🌫\n              Climate Anomalies\n            \n            i"
+      },
+      {
+        "layer": "climate",
+        "checked": false,
+        "text": "🌫\n              Climate Anomalies"
+      },
+      {
+        "layer": "weather",
+        "checked": true,
+        "text": "⛈\n              Severe Weather Alerts (NWS, ECCC, WMO SWIC)\n            \n            i"
+      },
+      {
+        "layer": "weather",
+        "checked": true,
+        "text": "⛈\n              Severe Weather Alerts (NWS, ECCC, WMO SWIC)"
+      },
+      {
+        "layer": "canadaRoads",
+        "checked": false,
+        "text": "🚧\n              Canada Roads\n            \n            i"
+      },
+      {
+        "layer": "canadaRoads",
+        "checked": false,
+        "text": "🚧\n              Canada Roads"
+      },
+      {
+        "layer": "canadaAlerts",
+        "checked": true,
+        "text": "⚠\n              Canada Alerts (AB + BC + SK)\n            \n            i"
+      },
+      {
+        "layer": "canadaAlerts",
+        "checked": true,
+        "text": "⚠\n              Canada Alerts (AB + BC + SK)"
+      },
+      {
+        "layer": "outages",
+        "checked": true,
+        "text": "📡\n              Internet Disruptions\n            \n            i"
+      },
+      {
+        "layer": "outages",
+        "checked": true,
+        "text": "📡\n              Internet Disruptions"
+      },
+      {
+        "layer": "cyberThreats",
+        "checked": false,
+        "text": "🛡\n              Cyber Threats\n            \n            i"
+      },
+      {
+        "layer": "cyberThreats",
+        "checked": false,
+        "text": "🛡\n              Cyber Threats"
+      },
+      {
+        "layer": "natural",
+        "checked": true,
+        "text": "🌋\n              Natural Events\n            \n            i"
+      },
+      {
+        "layer": "natural",
+        "checked": true,
+        "text": "🌋\n              Natural Events"
+      },
+      {
+        "layer": "fires",
+        "checked": false,
+        "text": "🔥\n              Fires\n            \n            i"
+      },
+      {
+        "layer": "fires",
+        "checked": false,
+        "text": "🔥\n              Fires"
+      },
+      {
+        "layer": "waterways",
+        "checked": true,
+        "text": "⚓\n              Chokepoints\n            \n            i"
+      },
+      {
+        "layer": "waterways",
+        "checked": true,
+        "text": "⚓\n              Chokepoints"
+      },
+      {
+        "layer": "economic",
+        "checked": true,
+        "text": "💰\n              Economic Centers\n            \n            i"
+      },
+      {
+        "layer": "economic",
+        "checked": true,
+        "text": "💰\n              Economic Centers"
+      },
+      {
+        "layer": "minerals",
+        "checked": false,
+        "text": "💎\n              Critical Minerals\n            \n            i"
+      },
+      {
+        "layer": "minerals",
+        "checked": false,
+        "text": "💎\n              Critical Minerals"
+      },
+      {
+        "layer": "gpsJamming",
+        "checked": false,
+        "text": "📡\n              GPS JAMMING\n            \n            i"
+      },
+      {
+        "layer": "gpsJamming",
+        "checked": false,
+        "text": "📡\n              GPS JAMMING"
+      },
+      {
+        "layer": "satellites",
+        "checked": false,
+        "text": "🛰\n              Orbital Surveillance\n            \n            i"
+      },
+      {
+        "layer": "satellites",
+        "checked": false,
+        "text": "🛰\n              Orbital Surveillance"
+      },
+      {
+        "layer": "ciiChoropleth",
+        "checked": false,
+        "text": "🌎\n              CII Instability\n            \n            i"
+      },
+      {
+        "layer": "ciiChoropleth",
+        "checked": false,
+        "text": "🌎\n              CII Instability"
+      },
+      {
+        "layer": "resilienceScore",
+        "checked": false,
+        "text": "📈\n              Resilience 🔒\n            \n            i"
+      },
+      {
+        "layer": "resilienceScore",
+        "checked": false,
+        "text": "📈\n              Resilience 🔒"
+      },
+      {
+        "layer": "sanctions",
+        "checked": true,
+        "text": "🚫\n              Sanctions\n            \n            i"
+      },
+      {
+        "layer": "sanctions",
+        "checked": true,
+        "text": "🚫\n              Sanctions"
+      },
+      {
+        "layer": "dayNight",
+        "checked": false,
+        "text": "🌓\n              Day/Night\n            \n            i"
+      },
+      {
+        "layer": "dayNight",
+        "checked": false,
+        "text": "🌓\n              Day/Night"
+      },
+      {
+        "layer": "webcams",
+        "checked": false,
+        "text": "📷\n              Live Webcams\n            \n            i"
+      },
+      {
+        "layer": "webcams",
+        "checked": false,
+        "text": "📷\n              Live Webcams"
+      },
+      {
+        "layer": "diseaseOutbreaks",
+        "checked": false,
+        "text": "🦠\n              Disease Outbreaks\n            \n            i"
+      },
+      {
+        "layer": "diseaseOutbreaks",
+        "checked": false,
+        "text": "🦠\n              Disease Outbreaks"
+      }
+    ],
+    "canvases": [
+      {
+        "i": 0,
+        "width": 862,
+        "height": 789,
+        "css": "",
+        "rect": {
+          "x": 1,
+          "y": 118,
+          "width": 862,
+          "height": 789
+        },
+        "parent": "maplibregl-canvas-container maplibregl-interactive maplibregl-touch-drag-pan maplibregl-touch-zoom-rotate deck-widget-container"
+      }
+    ],
+    "globals": [
+      "createImageBitmap",
+      "geoDebug",
+      "deck"
+    ],
+    "geometry": [
+      {
+        "iso2": "IR",
+        "name": "Iran",
+        "type": "Polygon",
+        "bboxFromCoords": [
+          44.061372,
+          25.202094,
+          62.753564,
+          39.685279
+        ],
+        "polygonRings": 1,
+        "firstRingSignedArea": 155.85450813948978
+      },
+      {
+        "iso2": "PK",
+        "name": "Pakistan",
+        "type": "Polygon",
+        "bboxFromCoords": [
+          60.844379,
+          23.803453,
+          77.048971,
+          37.021669
+        ],
+        "polygonRings": 1,
+        "firstRingSignedArea": 81.77727573831476
+      }
+    ],
+    "bodyText": "World Monitor — Real-Time Global Intelligence Dashboard\n\nWorld Monitor is the full-spectrum real-time global intelligence dashboard: one browser workspace that combines geopolitical conflict tracking, military and civil aviation, maritime AIS, undersea cable and infrastructure maps, markets, climate hazards, cyber signals, and open-source news into a single live situation picture. Analysts, journalists, researchers, and operators use it to see how distant events connect before they harden into headlines.\n\nOn the map you can follow conflict zones and protest activity alongside earthquake and wildfire alerts, power-outage clusters, and strategic infrastructure such as military bases, nuclear facilities, and subsea cables. Aviation layers surface military and commercial flights; maritime layers track ships through chokepoints and high-risk waters. Country deep-dives open resilience, risk, and source-backed context for more than 190 states without leaving the dashboard.\n\nMarket and prediction panels sit beside the geospatial view so price moves, central-bank signals, commodities, and prediction-market odds can be read against the same map context that shows tankers, jets, and crisis corridors. Government-spending and macro indicators help separate noise from policy-relevant shifts. The goal is not another news feed — it is a continuously updating OSINT workbench with auditable upstream sources.\n\nReference surfaces outside the live map keep the same evidence standard: country intelligence pages, maritime chokepoint briefs, crisis trackers, live tools, research reports, and an audited source catalog. Agents and developers can also use the MCP server and REST API documented on the site. World Monitor is open source and free to start; Pro unlocks deeper analysis without hiding "
+  },
+  "errors": [
+    {
+      "type": "warning",
+      "text": "Error with Permissions-Policy header: Origin trial controlled feature not enabled: 'tools'."
+    },
+    {
+      "type": "error",
+      "text": "The script has an unsupported MIME type ('text/html')."
+    },
+    {
+      "type": "warning",
+      "text": "[PWA] Service worker registration failed: SecurityError: Failed to register a ServiceWorker for scope ('http://127.0.0.1:4187/') with script ('http://127.0.0.1:4187/sw.js'): The script has an unsupported MIME type ('text/html')."
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "warning",
+      "text": "[PanelLayoutManager] Boot shell footprint drift during skeleton->app swap: main dx=0, dy=0, dw=0, dh=-56.5; map dx=0, dy=0, dw=-576, dh=363.5; grid dx=870, dy=-500, dw=-870, dh=91.5. Keep index.html skeleton dimensions in parity with the first hydrated dashboard frame."
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "[App] Telegram intel fetch failed: SyntaxError: Unexpected token '/', \"// @ts-che\"... is not valid JSON"
+    },
+    {
+      "type": "error",
+      "text": "[App] X news-account fetch failed: SyntaxError: Unexpected token '/', \"// @ts-che\"... is not valid JSON"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "[Military Flight Tracking] Failed: Error: No flights returned — upstream may be down"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+    },
+    {
+      "type": "error",
+      "text": "[Traffic Anomalies] Failed: ApiError: Request failed with status 503"
+    },
+    {
+      "type": "error",
+      "text": "[DDoS Attacks] Failed: ApiError: Request failed with status 503"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"politics\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"us\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"europe\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"middleeast\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"tech\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"ai\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"finance\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"gov\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"layoffs\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"thinktanks\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"crisis\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"africa\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"latam\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"asia\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"energy\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Intel digest missing, limited per-feed fallback disabled"
+    },
+    {
+      "type": "error",
+      "text": "Access to fetch at 'https://maps.worldmonitor.app/country-boundary-overrides.geojson' from origin 'http://127.0.0.1:4187' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource."
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest fetch failed, using fallback: TimeoutError: signal timed out"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "[NWS + ECCC + WMO SWIC Weather] Failed: SyntaxError: Unexpected token 'i', \"import __v\"... is not valid JSON"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "[Sanctions Pressure] Failed: SyntaxError: Unexpected token 'i', \"import __v\"... is not valid JSON"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "[Canada alerts] Failed: SyntaxError: Unexpected token 'i', \"import __v\"... is not valid JSON"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "[PizzINT] Failed: Error: No PizzINT data"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+    },
+    {
+      "type": "error",
+      "text": "[App] Telegram intel fetch failed: SyntaxError: Unexpected token '/', \"// @ts-che\"... is not valid JSON"
+    },
+    {
+      "type": "error",
+      "text": "[App] X news-account fetch failed: SyntaxError: Unexpected token '/', \"// @ts-che\"... is not valid JSON"
+    },
+    {
+      "type": "error",
+      "text": "[Military Flight Tracking] Failed: Error: No flights returned — upstream may be down"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+    },
+    {
+      "type": "error",
+      "text": "[Traffic Anomalies] Failed: ApiError: Request failed with status 503"
+    },
+    {
+      "type": "warning",
+      "text": "[Traffic Anomalies] On cooldown for 300s after 2 failures"
+    },
+    {
+      "type": "error",
+      "text": "[DDoS Attacks] Failed: ApiError: Request failed with status 503"
+    },
+    {
+      "type": "warning",
+      "text": "[DDoS Attacks] On cooldown for 300s after 2 failures"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"politics\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"us\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"europe\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"middleeast\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"tech\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"ai\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"finance\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"gov\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"layoffs\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"thinktanks\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"crisis\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"africa\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"latam\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"asia\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"energy\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Intel digest missing, limited per-feed fallback disabled"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "[NWS + ECCC + WMO SWIC Weather] Failed: SyntaxError: Unexpected token 'i', \"import __v\"... is not valid JSON"
+    },
+    {
+      "type": "warning",
+      "text": "[NWS + ECCC + WMO SWIC Weather] On cooldown for 300s after 2 failures"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "[Sanctions Pressure] Failed: SyntaxError: Unexpected token 'i', \"import __v\"... is not valid JSON"
+    },
+    {
+      "type": "warning",
+      "text": "[Sanctions Pressure] On cooldown for 300s after 2 failures"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "[Canada alerts] Failed: SyntaxError: Unexpected token 'i', \"import __v\"... is not valid JSON"
+    },
+    {
+      "type": "warning",
+      "text": "[Canada alerts] On cooldown for 300s after 2 failures"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "[PizzINT] Failed: Error: No PizzINT data"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "warning",
+      "text": "[CorrelationRuntimeMode] control-plane read failed; using legacy: SyntaxError: Unexpected token 'i', \"import { g\"... is not valid JSON"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "[App] Refresh health-freshness failed: Error: health freshness fetch failed: 200\n    at refreshDataFreshnessFromHealth (http://127.0.0.1:4187/src/services/health-freshness.ts:85:11)\n    at async refreshScheduler.scheduleRefresh.runImmediately (http://127.0.0.1:4187/src/App.ts?t=1789098142292:2930:11)"
+    }
+  ],
+  "consoleLog": [
+    {
+      "type": "warning",
+      "text": "Error with Permissions-Policy header: Origin trial controlled feature not enabled: 'tools'."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "log",
+      "text": "[feeds] 157 unique default-enabled sources / 370 total"
+    },
+    {
+      "type": "log",
+      "text": "[App] Variant check: applied=\"null\", current=\"full\""
+    },
+    {
+      "type": "log",
+      "text": "[App] Variant changed - seeding new defaults, disabling cross-variant panels"
+    },
+    {
+      "type": "log",
+      "text": "[App] Sources reduction: 213 disabled, 157 enabled"
+    },
+    {
+      "type": "error",
+      "text": "The script has an unsupported MIME type ('text/html')."
+    },
+    {
+      "type": "warning",
+      "text": "[PWA] Service worker registration failed: SecurityError: Failed to register a ServiceWorker for scope ('http://127.0.0.1:4187/') with script ('http://127.0.0.1:4187/sw.js'): The script has an unsupported MIME type ('text/html')."
+    },
+    {
+      "type": "info",
+      "text": "🌐 i18next is made possible by our own product, Locize — consider powering your project with managed localization (AI, CDN, integrations): https://locize.com 💙"
+    },
+    {
+      "type": "log",
+      "text": "i18next: languageChanged en-US"
+    },
+    {
+      "type": "log",
+      "text": "i18next: initialized {debug: true, initAsync: true, ns: Array(1), defaultNS: Array(1), fallbackLng: Array(1)}"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "log",
+      "text": "i18next: languageChanged en-US"
+    },
+    {
+      "type": "log",
+      "text": "[App] Free tier: enforced 40-panel limit (disabled over-cap / cw-* panels)"
+    },
+    {
+      "type": "log",
+      "text": "[App] Free tier: reconciled 77 gate-owned source disable(s)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "log",
+      "text": "[MapContainer] Initializing deck.gl map (desktop mode)"
+    },
+    {
+      "type": "warning",
+      "text": "[PanelLayoutManager] Boot shell footprint drift during skeleton->app swap: main dx=0, dy=0, dw=0, dh=-56.5; map dx=0, dy=0, dw=-576, dh=363.5; grid dx=870, dy=-500, dw=-870, dh=91.5. Keep index.html skeleton dimensions in parity with the first hydrated dashboard frame."
+    },
+    {
+      "type": "log",
+      "text": "[StrategicPosturePanel] setLocationClickHandler called, handler: function"
+    },
+    {
+      "type": "log",
+      "text": "[StrategicPosturePanel] Handler stored, onLocationClick now: function"
+    },
+    {
+      "type": "log",
+      "text": "%c[Vercel Web Analytics]%c Debug mode is enabled by default in development. No requests will be sent to the server. color: rgb(120, 120, 120) color: inherit"
+    },
+    {
+      "type": "log",
+      "text": "%c[Vercel Web Analytics]%c Page view would be ignored by `beforeSend` because null was returned. color: rgb(120, 120, 120) color: inherit {type: pageview, url: http://127.0.0.1:4187/, payload: undefined}"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "log",
+      "text": "[CIIPanel] Rendered 31 countries from cached/bootstrap data"
+    },
+    {
+      "type": "log",
+      "text": "[StrategicRiskPanel] Using cached scores from backend"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "[App] Telegram intel fetch failed: SyntaxError: Unexpected token '/', \"// @ts-che\"... is not valid JSON"
+    },
+    {
+      "type": "error",
+      "text": "[App] X news-account fetch failed: SyntaxError: Unexpected token '/', \"// @ts-che\"... is not valid JSON"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "[Military Flight Tracking] Failed: Error: No flights returned — upstream may be down"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation components.deckgl.layers.radiationWatch components.deckgl.layers.radiationWatch"
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation components.deckgl.layers.radiationWatch components.deckgl.layers.radiationWatch"
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation components.deckgl.layers.storageFacilities components.deckgl.layers.storageFacilities"
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation components.deckgl.layers.storageFacilities components.deckgl.layers.storageFacilities"
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation components.deckgl.layers.fuelShortages components.deckgl.layers.fuelShortages"
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation components.deckgl.layers.fuelShortages components.deckgl.layers.fuelShortages"
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation components.deckgl.layers.resilienceScore components.deckgl.layers.resilienceScore"
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation components.deckgl.layers.resilienceScore components.deckgl.layers.resilienceScore"
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation components.deckgl.layers.sanctions components.deckgl.layers.sanctions"
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation components.deckgl.layers.sanctions components.deckgl.layers.sanctions"
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation components.deckgl.layers.webcams components.deckgl.layers.webcams"
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation components.deckgl.layers.webcams components.deckgl.layers.webcams"
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation components.deckgl.layers.diseaseOutbreaks components.deckgl.layers.diseaseOutbreaks"
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation components.deckgl.layers.diseaseOutbreaks components.deckgl.layers.diseaseOutbreaks"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+    },
+    {
+      "type": "error",
+      "text": "[Traffic Anomalies] Failed: ApiError: Request failed with status 503"
+    },
+    {
+      "type": "error",
+      "text": "[DDoS Attacks] Failed: ApiError: Request failed with status 503"
+    },
+    {
+      "type": "log",
+      "text": "[StrategicRiskPanel] Using cached scores from backend"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"politics\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"us\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"europe\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"middleeast\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"tech\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"ai\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"finance\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"gov\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"layoffs\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"thinktanks\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"crisis\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"africa\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"latam\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"asia\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"energy\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Intel digest missing, limited per-feed fallback disabled"
+    },
+    {
+      "type": "error",
+      "text": "Access to fetch at 'https://maps.worldmonitor.app/country-boundary-overrides.geojson' from origin 'http://127.0.0.1:4187' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource."
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "type": "log",
+      "text": "[CIIPanel] Rendered 31 countries from cached/bootstrap data"
+    },
+    {
+      "type": "log",
+      "text": "[Intelligence] All signals loaded; canonical CII state refreshed"
+    },
+    {
+      "type": "log",
+      "text": "[StrategicRiskPanel] Using cached scores from backend"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest fetch failed, using fallback: TimeoutError: signal timed out"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "[NWS + ECCC + WMO SWIC Weather] Failed: SyntaxError: Unexpected token 'i', \"import __v\"... is not valid JSON"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "[Sanctions Pressure] Failed: SyntaxError: Unexpected token 'i', \"import __v\"... is not valid JSON"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "[Canada alerts] Failed: SyntaxError: Unexpected token 'i', \"import __v\"... is not valid JSON"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "[PizzINT] Failed: Error: No PizzINT data"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+    },
+    {
+      "type": "error",
+      "text": "[App] Telegram intel fetch failed: SyntaxError: Unexpected token '/', \"// @ts-che\"... is not valid JSON"
+    },
+    {
+      "type": "error",
+      "text": "[App] X news-account fetch failed: SyntaxError: Unexpected token '/', \"// @ts-che\"... is not valid JSON"
+    },
+    {
+      "type": "error",
+      "text": "[Military Flight Tracking] Failed: Error: No flights returned — upstream may be down"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+    },
+    {
+      "type": "error",
+      "text": "[Traffic Anomalies] Failed: ApiError: Request failed with status 503"
+    },
+    {
+      "type": "warning",
+      "text": "[Traffic Anomalies] On cooldown for 300s after 2 failures"
+    },
+    {
+      "type": "error",
+      "text": "[DDoS Attacks] Failed: ApiError: Request failed with status 503"
+    },
+    {
+      "type": "warning",
+      "text": "[DDoS Attacks] On cooldown for 300s after 2 failures"
+    },
+    {
+      "type": "log",
+      "text": "[Intelligence] All signals loaded; canonical CII state refreshed"
+    },
+    {
+      "type": "log",
+      "text": "[StrategicRiskPanel] Using cached scores from backend"
+    },
+    {
+      "type": "log",
+      "text": "[Search] Indexing 0 news items (allNews total: 0)"
+    },
+    {
+      "type": "info",
+      "text": "Autofocus processing was blocked because a document already has a focused element."
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"politics\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"us\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"europe\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"middleeast\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"tech\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"ai\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"finance\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"gov\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"layoffs\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"thinktanks\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"crisis\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"africa\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"latam\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"asia\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"energy\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Intel digest missing, limited per-feed fallback disabled"
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation commands.labels.layer.storageFacilities "
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation commands.labels.layer.fuelShortages "
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation commands.labels.layer.gps "
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation commands.labels.layer.satellites "
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation commands.labels.layer.ucdp "
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation commands.labels.layer.irradiators "
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation commands.labels.layer.radiation "
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation commands.labels.layer.spaceports "
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation commands.labels.layer.datacenters "
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation commands.labels.layer.military "
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation commands.labels.layer.natural "
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation commands.labels.layer.waterways "
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation commands.labels.layer.economic "
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation commands.labels.layer.minerals "
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation commands.labels.layer.cii "
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation commands.labels.layer.dayNight "
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation commands.labels.layer.sanctions "
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation panels.threatTimeline Threat Timeline"
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation panels.torontoSafety Toronto Safety"
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation panels.crossSourceSignals Cross-Source Signals"
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation panels.pipelineStatus Oil & Gas Pipeline Status"
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation panels.storageFacilityMap Strategic Storage Atlas"
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation panels.fuelShortages Global Fuel Shortage Registry"
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation panels.energyDisruptions Energy Disruptions Log"
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation panels.energyRiskOverview Global Energy Risk Overview"
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation panels.newsMarketCorrelation News ↔ Markets"
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation panels.sanctionsPressure Sanctions Pressure"
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation panels.chinaCorridors China Logistics Corridors"
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation panels.chinaActivityNowcast China Activity Nowcast"
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation panels.aaiiSentiment AAII Investor Sentiment"
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation panels.hormuzTracker Hormuz Trade Tracker"
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation panels.forecast AI Forecasts"
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation panels.militaryCorrelation Force Posture"
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation panels.escalationCorrelation Escalation Monitor"
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation panels.economicCorrelation Economic Warfare"
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation panels.disasterCorrelation Disaster Cascade"
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation panels.worldClock World Clock"
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation panels.radiationWatch Radiation Watch"
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation panels.thermalEscalation Thermal Escalation"
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation panels.nationalDebt National Debt Clock"
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation panels.fsi Financial Stress Indicator"
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation panels.yieldCurve Yield Curve & Rates"
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation panels.earningsCalendar Earnings Calendar"
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation panels.economicCalendar Economic Calendar"
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation panels.cotPositioning CFTC COT Positioning"
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation panels.liquidityShifts Liquidity Shifts"
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation panels.positioning-247 24/7 Positioning"
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation panels.macroTiles Macro Indicators"
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation panels.defensePatents R&D Signal"
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation panels.diseaseOutbreaks Disease Outbreaks"
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation panels.socialVelocity Social Velocity"
+    },
+    {
+      "type": "log",
+      "text": "i18next::translator: missingKey en-US translation commands.labels.view.route-explorer "
+    },
+    {
+      "type": "info",
+      "text": "[News] Digest fetched: 17 categories"
+    },
+    {
+      "type": "debug",
+      "text": "[TrendingKeywords] Suppressed non-entity term: \"war\""
+    },
+    {
+      "type": "debug",
+      "text": "[TrendingKeywords] Suppressed non-entity term: \"gov\""
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "debug",
+      "text": "[Summarization] Summarization skipped: no eligible provider (entitlement-gated, disabled, or local model unavailable) — no summary produced"
+    },
+    {
+      "type": "debug",
+      "text": "[Summarization] Summarization skipped: no eligible provider (entitlement-gated, disabled, or local model unavailable) — no summary produced"
+    },
+    {
+      "type": "debug",
+      "text": "[Summarization] Summarization skipped: no eligible provider (entitlement-gated, disabled, or local model unavailable) — no summary produced"
+    },
+    {
+      "type": "debug",
+      "text": "[Summarization] Summarization skipped: no eligible provider (entitlement-gated, disabled, or local model unavailable) — no summary produced"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "[NWS + ECCC + WMO SWIC Weather] Failed: SyntaxError: Unexpected token 'i', \"import __v\"... is not valid JSON"
+    },
+    {
+      "type": "warning",
+      "text": "[NWS + ECCC + WMO SWIC Weather] On cooldown for 300s after 2 failures"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "[Sanctions Pressure] Failed: SyntaxError: Unexpected token 'i', \"import __v\"... is not valid JSON"
+    },
+    {
+      "type": "warning",
+      "text": "[Sanctions Pressure] On cooldown for 300s after 2 failures"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "debug",
+      "text": "[Summarization] Summarization skipped: no eligible provider (entitlement-gated, disabled, or local model unavailable) — no summary produced"
+    },
+    {
+      "type": "error",
+      "text": "[Canada alerts] Failed: SyntaxError: Unexpected token 'i', \"import __v\"... is not valid JSON"
+    },
+    {
+      "type": "warning",
+      "text": "[Canada alerts] On cooldown for 300s after 2 failures"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "[PizzINT] Failed: Error: No PizzINT data"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "log",
+      "text": "[Search] Indexing 107 news items (allNews total: 107)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "warning",
+      "text": "[CorrelationRuntimeMode] control-plane read failed; using legacy: SyntaxError: Unexpected token 'i', \"import { g\"... is not valid JSON"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "[App] Refresh health-freshness failed: Error: health freshness fetch failed: 200\n    at refreshDataFreshnessFromHealth (http://127.0.0.1:4187/src/services/health-freshness.ts:85:11)\n    at async refreshScheduler.scheduleRefresh.runImmediately (http://127.0.0.1:4187/src/App.ts?t=1789098142292:2930:11)"
+    },
+    {
+      "type": "log",
+      "text": "[StrategicRiskPanel] Using cached scores from backend"
+    }
+  ]
+}

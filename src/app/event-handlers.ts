@@ -42,6 +42,7 @@ import {
   saveToStorage,
   getCurrentTheme,
   showToast,
+  preserveDevCesiumSpikeParam,
   urlHasAsyncFlyTo,
 } from '@/utils';
 import { clearPanelColSpans, clearPanelSpans } from '@/utils/panel-storage';
@@ -345,7 +346,8 @@ export class EventHandlerManager implements AppModule {
     if (!shareUrl) return;
     // Preserve the shared mobile-overlay marker while syncing map URL state;
     // replacing it with null makes Android Back skip the open sheet.
-    try { history.replaceState(history.state, '', shareUrl); } catch { }
+    const stateUrl = preserveDevCesiumSpikeParam(shareUrl, window.location.search, import.meta.env.DEV);
+    try { history.replaceState(history.state, '', stateUrl); } catch { }
   };
   private readonly debouncedUrlSync = debounce(this.writeUrlState, 250);
 

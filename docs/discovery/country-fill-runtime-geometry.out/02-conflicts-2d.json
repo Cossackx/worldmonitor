@@ -1,0 +1,451 @@
+{
+  "label": "02-conflicts-2d",
+  "url": "http://127.0.0.1:4187/?lat=20.0000&lon=0.0000&zoom=1.50&view=global&timeRange=7d&layers=conflicts%2Cbases%2Chotspots%2Cnuclear%2Csanctions%2Cweather%2CcanadaAlerts%2Ceconomic%2Cwaterways%2Coutages%2Cmilitary%2Cnatural",
+  "map": {
+    "className": "map-container deckgl-mode",
+    "html": "<div class=\"deckgl-map-wrapper\" id=\"deckglMapWrapper\" style=\"position: relative; width: 100%; height: 100%; overflow: hidden;\"><div id=\"deckgl-basemap\" class=\"maplibregl-map\" style=\"position: absolute; top: 0px; left: 0px; width: 100%; height: 100%;\"><div class=\"maplibregl-canvas-container maplibregl-interactive maplibregl-touch-drag-pan maplibregl-touch-zoom-rotate deck-widget-container\"><canvas class=\"maplibregl-canvas\" tabindex=\"0\" aria-label=\"Map\" role=\"region\" width=\"862\" height=\"789\" style=\"width: 862px; height: 789px; touch-action: unset; user-select: none; -webkit-user-drag: none; -webkit-tap-highlight-color: rgba(0, 0, 0, 0); outline: none; cursor: grab;\"></canvas><div style=\"pointer-events: none; position: absolute; overflow: hidden; display: block; left: 0px; top: 0px; width: 862px; height: 789px;\"><div class=\"fill\" style=\"position: absolute; z-index: 2; inset: 0px;\"><div class=\"deck-tooltip\" style=\"z-index: 1; position: absolute; pointer-events: none; color: rgb(160, 167, 180); background-color: rgb(41, 50, 60); padding: 10px; top: 0px; left: 0px; display: none;\"></div></div></div></div><div class=\"maplibregl-control-container\"><div class=\"maplibregl-ctrl-top-left \"><di"
+  },
+  "modeButtons": [
+    {
+      "mode": "flat",
+      "active": true,
+      "title": "2D Map"
+    },
+    {
+      "mode": "globe",
+      "active": false,
+      "title": "3D Globe"
+    }
+  ],
+  "toggles": [
+    {
+      "layer": "hotspots",
+      "checked": true,
+      "text": "🎯\n              Intel Hotspots\n            \n            i"
+    },
+    {
+      "layer": "hotspots",
+      "checked": true,
+      "text": "🎯\n              Intel Hotspots"
+    },
+    {
+      "layer": "conflicts",
+      "checked": true,
+      "text": "⚔\n              Conflict Zones\n            \n            i"
+    },
+    {
+      "layer": "conflicts",
+      "checked": true,
+      "text": "⚔\n              Conflict Zones"
+    },
+    {
+      "layer": "bases",
+      "checked": true,
+      "text": "🏛\n              Military Bases\n            \n            i"
+    },
+    {
+      "layer": "bases",
+      "checked": true,
+      "text": "🏛\n              Military Bases"
+    },
+    {
+      "layer": "nuclear",
+      "checked": true,
+      "text": "☢\n              Nuclear Sites\n            \n            i"
+    },
+    {
+      "layer": "nuclear",
+      "checked": true,
+      "text": "☢\n              Nuclear Sites"
+    },
+    {
+      "layer": "irradiators",
+      "checked": false,
+      "text": "⚠\n              Gamma Irradiators\n            \n            i"
+    },
+    {
+      "layer": "irradiators",
+      "checked": false,
+      "text": "⚠\n              Gamma Irradiators"
+    },
+    {
+      "layer": "radiationWatch",
+      "checked": false,
+      "text": "☢\n              Radiation Watch\n            \n            i"
+    },
+    {
+      "layer": "radiationWatch",
+      "checked": false,
+      "text": "☢\n              Radiation Watch"
+    },
+    {
+      "layer": "spaceports",
+      "checked": false,
+      "text": "🚀\n              Spaceports\n            \n            i"
+    },
+    {
+      "layer": "spaceports",
+      "checked": false,
+      "text": "🚀\n              Spaceports"
+    },
+    {
+      "layer": "cables",
+      "checked": false,
+      "text": "🔌\n              Undersea Cables\n            \n            i"
+    },
+    {
+      "layer": "cables",
+      "checked": false,
+      "text": "🔌\n              Undersea Cables"
+    },
+    {
+      "layer": "pipelines",
+      "checked": false,
+      "text": "🛢\n              Pipelines\n            \n            i"
+    },
+    {
+      "layer": "pipelines",
+      "checked": false,
+      "text": "🛢\n              Pipelines"
+    },
+    {
+      "layer": "storageFacilities",
+      "checked": false,
+      "text": "🏗\n              Storage Facilities\n            \n            i"
+    },
+    {
+      "layer": "storageFacilities",
+      "checked": false,
+      "text": "🏗\n              Storage Facilities"
+    },
+    {
+      "layer": "fuelShortages",
+      "checked": false,
+      "text": "⚙\n              Fuel Shortages\n            \n            i"
+    },
+    {
+      "layer": "fuelShortages",
+      "checked": false,
+      "text": "⚙\n              Fuel Shortages"
+    },
+    {
+      "layer": "datacenters",
+      "checked": false,
+      "text": "🖥\n              AI Data Centers\n            \n            i"
+    },
+    {
+      "layer": "datacenters",
+      "checked": false,
+      "text": "🖥\n              AI Data Centers"
+    },
+    {
+      "layer": "military",
+      "checked": true,
+      "text": "✈\n              Military Activity\n            \n            i"
+    },
+    {
+      "layer": "military",
+      "checked": true,
+      "text": "✈\n              Military Activity"
+    },
+    {
+      "layer": "ais",
+      "checked": false,
+      "text": "🚢\n              Ship Traffic\n            \n            i"
+    },
+    {
+      "layer": "ais",
+      "checked": false,
+      "text": "🚢\n              Ship Traffic"
+    },
+    {
+      "layer": "tradeRoutes",
+      "checked": false,
+      "text": "⚓\n              Trade Routes\n            \n            i"
+    },
+    {
+      "layer": "tradeRoutes",
+      "checked": false,
+      "text": "⚓\n              Trade Routes"
+    },
+    {
+      "layer": "flights",
+      "checked": false,
+      "text": "✈\n              Aviation\n            \n            i"
+    },
+    {
+      "layer": "flights",
+      "checked": false,
+      "text": "✈\n              Aviation"
+    },
+    {
+      "layer": "protests",
+      "checked": false,
+      "text": "📢\n              Protests\n            \n            i"
+    },
+    {
+      "layer": "protests",
+      "checked": false,
+      "text": "📢\n              Protests"
+    },
+    {
+      "layer": "ucdpEvents",
+      "checked": false,
+      "text": "⚔\n              Armed Conflict Events\n            \n            i"
+    },
+    {
+      "layer": "ucdpEvents",
+      "checked": false,
+      "text": "⚔\n              Armed Conflict Events"
+    },
+    {
+      "layer": "displacement",
+      "checked": false,
+      "text": "👥\n              Displacement Flows\n            \n            i"
+    },
+    {
+      "layer": "displacement",
+      "checked": false,
+      "text": "👥\n              Displacement Flows"
+    },
+    {
+      "layer": "climate",
+      "checked": false,
+      "text": "🌫\n              Climate Anomalies\n            \n            i"
+    },
+    {
+      "layer": "climate",
+      "checked": false,
+      "text": "🌫\n              Climate Anomalies"
+    },
+    {
+      "layer": "weather",
+      "checked": true,
+      "text": "⛈\n              Severe Weather Alerts (NWS, ECCC, WMO SWIC)\n            \n            i"
+    },
+    {
+      "layer": "weather",
+      "checked": true,
+      "text": "⛈\n              Severe Weather Alerts (NWS, ECCC, WMO SWIC)"
+    },
+    {
+      "layer": "canadaRoads",
+      "checked": false,
+      "text": "🚧\n              Canada Roads\n            \n            i"
+    },
+    {
+      "layer": "canadaRoads",
+      "checked": false,
+      "text": "🚧\n              Canada Roads"
+    },
+    {
+      "layer": "canadaAlerts",
+      "checked": true,
+      "text": "⚠\n              Canada Alerts (AB + BC + SK)\n            \n            i"
+    },
+    {
+      "layer": "canadaAlerts",
+      "checked": true,
+      "text": "⚠\n              Canada Alerts (AB + BC + SK)"
+    },
+    {
+      "layer": "outages",
+      "checked": true,
+      "text": "📡\n              Internet Disruptions\n            \n            i"
+    },
+    {
+      "layer": "outages",
+      "checked": true,
+      "text": "📡\n              Internet Disruptions"
+    },
+    {
+      "layer": "cyberThreats",
+      "checked": false,
+      "text": "🛡\n              Cyber Threats\n            \n            i"
+    },
+    {
+      "layer": "cyberThreats",
+      "checked": false,
+      "text": "🛡\n              Cyber Threats"
+    },
+    {
+      "layer": "natural",
+      "checked": true,
+      "text": "🌋\n              Natural Events\n            \n            i"
+    },
+    {
+      "layer": "natural",
+      "checked": true,
+      "text": "🌋\n              Natural Events"
+    },
+    {
+      "layer": "fires",
+      "checked": false,
+      "text": "🔥\n              Fires\n            \n            i"
+    },
+    {
+      "layer": "fires",
+      "checked": false,
+      "text": "🔥\n              Fires"
+    },
+    {
+      "layer": "waterways",
+      "checked": true,
+      "text": "⚓\n              Chokepoints\n            \n            i"
+    },
+    {
+      "layer": "waterways",
+      "checked": true,
+      "text": "⚓\n              Chokepoints"
+    },
+    {
+      "layer": "economic",
+      "checked": true,
+      "text": "💰\n              Economic Centers\n            \n            i"
+    },
+    {
+      "layer": "economic",
+      "checked": true,
+      "text": "💰\n              Economic Centers"
+    },
+    {
+      "layer": "minerals",
+      "checked": false,
+      "text": "💎\n              Critical Minerals\n            \n            i"
+    },
+    {
+      "layer": "minerals",
+      "checked": false,
+      "text": "💎\n              Critical Minerals"
+    },
+    {
+      "layer": "gpsJamming",
+      "checked": false,
+      "text": "📡\n              GPS JAMMING\n            \n            i"
+    },
+    {
+      "layer": "gpsJamming",
+      "checked": false,
+      "text": "📡\n              GPS JAMMING"
+    },
+    {
+      "layer": "satellites",
+      "checked": false,
+      "text": "🛰\n              Orbital Surveillance\n            \n            i"
+    },
+    {
+      "layer": "satellites",
+      "checked": false,
+      "text": "🛰\n              Orbital Surveillance"
+    },
+    {
+      "layer": "ciiChoropleth",
+      "checked": false,
+      "text": "🌎\n              CII Instability\n            \n            i"
+    },
+    {
+      "layer": "ciiChoropleth",
+      "checked": false,
+      "text": "🌎\n              CII Instability"
+    },
+    {
+      "layer": "resilienceScore",
+      "checked": false,
+      "text": "📈\n              Resilience 🔒\n            \n            i"
+    },
+    {
+      "layer": "resilienceScore",
+      "checked": false,
+      "text": "📈\n              Resilience 🔒"
+    },
+    {
+      "layer": "sanctions",
+      "checked": true,
+      "text": "🚫\n              Sanctions\n            \n            i"
+    },
+    {
+      "layer": "sanctions",
+      "checked": true,
+      "text": "🚫\n              Sanctions"
+    },
+    {
+      "layer": "dayNight",
+      "checked": false,
+      "text": "🌓\n              Day/Night\n            \n            i"
+    },
+    {
+      "layer": "dayNight",
+      "checked": false,
+      "text": "🌓\n              Day/Night"
+    },
+    {
+      "layer": "webcams",
+      "checked": false,
+      "text": "📷\n              Live Webcams\n            \n            i"
+    },
+    {
+      "layer": "webcams",
+      "checked": false,
+      "text": "📷\n              Live Webcams"
+    },
+    {
+      "layer": "diseaseOutbreaks",
+      "checked": false,
+      "text": "🦠\n              Disease Outbreaks\n            \n            i"
+    },
+    {
+      "layer": "diseaseOutbreaks",
+      "checked": false,
+      "text": "🦠\n              Disease Outbreaks"
+    }
+  ],
+  "canvases": [
+    {
+      "i": 0,
+      "width": 862,
+      "height": 789,
+      "css": "",
+      "rect": {
+        "x": 1,
+        "y": 118,
+        "width": 862,
+        "height": 789
+      },
+      "parent": "maplibregl-canvas-container maplibregl-interactive maplibregl-touch-drag-pan maplibregl-touch-zoom-rotate deck-widget-container"
+    }
+  ],
+  "globals": [
+    "createImageBitmap",
+    "geoDebug",
+    "deck"
+  ],
+  "geometry": [
+    {
+      "iso2": "IR",
+      "name": "Iran",
+      "type": "Polygon",
+      "bboxFromCoords": [
+        44.061372,
+        25.202094,
+        62.753564,
+        39.685279
+      ],
+      "polygonRings": 1,
+      "firstRingSignedArea": 155.85450813948978
+    },
+    {
+      "iso2": "PK",
+      "name": "Pakistan",
+      "type": "Polygon",
+      "bboxFromCoords": [
+        60.844379,
+        23.803453,
+        77.048971,
+        37.021669
+      ],
+      "polygonRings": 1,
+      "firstRingSignedArea": 81.77727573831476
+    }
+  ],
+  "bodyText": "World Monitor — Real-Time Global Intelligence Dashboard\n\nWorld Monitor is the full-spectrum real-time global intelligence dashboard: one browser workspace that combines geopolitical conflict tracking, military and civil aviation, maritime AIS, undersea cable and infrastructure maps, markets, climate hazards, cyber signals, and open-source news into a single live situation picture. Analysts, journalists, researchers, and operators use it to see how distant events connect before they harden into headlines.\n\nOn the map you can follow conflict zones and protest activity alongside earthquake and wildfire alerts, power-outage clusters, and strategic infrastructure such as military bases, nuclear facilities, and subsea cables. Aviation layers surface military and commercial flights; maritime layers track ships through chokepoints and high-risk waters. Country deep-dives open resilience, risk, and source-backed context for more than 190 states without leaving the dashboard.\n\nMarket and prediction panels sit beside the geospatial view so price moves, central-bank signals, commodities, and prediction-market odds can be read against the same map context that shows tankers, jets, and crisis corridors. Government-spending and macro indicators help separate noise from policy-relevant shifts. The goal is not another news feed — it is a continuously updating OSINT workbench with auditable upstream sources.\n\nReference surfaces outside the live map keep the same evidence standard: country intelligence pages, maritime chokepoint briefs, crisis trackers, live tools, research reports, and an audited source catalog. Agents and developers can also use the MCP server and REST API documented on the site. World Monitor is open source and free to start; Pro unlocks deeper analysis without hiding "
+}

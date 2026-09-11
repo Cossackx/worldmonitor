@@ -50,6 +50,13 @@ function syncMapDimensionToggle(preference: MapModePreference): void {
   });
 }
 
+/** Align the control and persisted preference with the renderer that settled. */
+export function syncVisibleMapDimension(ctx: AppContext): void {
+  const preference = dashboardMapModeToPreference(currentDashboardMapMode(ctx));
+  syncMapDimensionToggle(preference);
+  persistJson(STORAGE_KEYS.mapMode, preference);
+}
+
 function persistJson(key: string, value: unknown): boolean {
   // Keep this off the `@/utils` barrel. That module loads `proxy.ts`, which
   // reads Vite's `import.meta.env.DEV` at import time and cannot run under tsx.

@@ -41,6 +41,11 @@ import {
   enforceFreePanelLimit,
 } from '@/config';
 import { BETA_MODE } from '@/config/beta';
+import {
+  PRIVATE_WORKSPACE_ENABLED,
+  shouldRenderHostedFooterLinks,
+  shouldRenderCommunityNudge,
+} from '@/config/private-workspace';
 import { NQ_PULSE_DISCLOSURE } from '@/config/nq-context';
 import { t } from '@/services/i18n';
 import { getCurrentTheme } from '@/utils';
@@ -50,6 +55,7 @@ import { syncPanelPreview } from '@/services/mission-preview-registry';
 import { loadStoredMissionPreset } from '@/services/mission-presets';
 import { peekPendingMissionAttribution } from '@/services/analytics';
 import { getStoredMapModePreference } from '@/services/map-mode-preference';
+import { syncVisibleMapDimension } from '@/app/map-dimension-control';
 import { loadWidgets, saveWidget, isProUser, isProTierResolved } from '@/services/widget-store';
 import { sanitizeLockedLayers, shouldSanitizeLockedLayers } from '@/config/map-layer-definitions';
 import type { CustomWidgetSpec } from '@/services/widget-store';
@@ -1038,6 +1044,9 @@ export class PanelLayoutManager implements AppModule {
     const referenceOrigin = this.ctx.isDesktopApp || window.location.hostname.endsWith('.worldmonitor.app')
       ? 'https://www.worldmonitor.app'
       : '';
+    const hostedFooterPricingLink = shouldRenderHostedFooterLinks(PRIVATE_WORKSPACE_ENABLED)
+      ? `<a href="${referenceOrigin}/pro#pricing" target="_blank" rel="noopener">Pricing</a>`
+      : '';
     const referenceLinksHtml = DASHBOARD_REFERENCE_LINKS.map(({ label, path }) => {
       const href = `${referenceOrigin}${path}`;
       return `<a href="${href}" target="_blank" rel="noopener">${label}</a>`;
@@ -1166,7 +1175,7 @@ export class PanelLayoutManager implements AppModule {
         <div class="mobile-menu-account" aria-label="Account">
           <span class="mobile-menu-account-icon" aria-hidden="true">◯</span>
           <div id="mobileAuthWidgetMount"></div>
-          <button class="mobile-auth-fallback" id="mobileAuthFallback" type="button">Sign In</button>
+          ${PRIVATE_WORKSPACE_ENABLED ? '' : '<button class="mobile-auth-fallback" id="mobileAuthFallback" type="button">Sign In</button>'}
         </div>
         <div class="mobile-menu-divider"></div>
         ${(() => {
@@ -1213,7 +1222,7 @@ export class PanelLayoutManager implements AppModule {
         <div class="mobile-menu-divider"></div>
         <div class="mobile-menu-footer-links">
           ${referenceLinksHtml}
-          <a href="${referenceOrigin}/pro#pricing" target="_blank" rel="noopener">Pricing</a>
+          ${hostedFooterPricingLink}
           <a href="https://www.worldmonitor.app/blog/" target="_blank" rel="noopener">Blog</a>
           <a href="https://www.worldmonitor.app/docs/documentation" target="_blank" rel="noopener">Docs</a>
           <a href="https://status.worldmonitor.app/" target="_blank" rel="noopener">Status</a>
@@ -1301,12 +1310,12 @@ export class PanelLayoutManager implements AppModule {
         </div>
         <nav aria-label="World Monitor references">
           ${referenceLinksHtml}
-          <a href="${referenceOrigin}/pro#pricing" target="_blank" rel="noopener">Pricing</a>
+          ${hostedFooterPricingLink}
           <a href="https://www.worldmonitor.app/blog/" target="_blank" rel="noopener">Blog</a>
           <a href="https://www.worldmonitor.app/docs/documentation" target="_blank" rel="noopener">Docs</a>
           <a href="https://status.worldmonitor.app/" target="_blank" rel="noopener">Status</a>
           <a href="https://github.com/koala73/worldmonitor" target="_blank" rel="noopener">GitHub</a>
-          <a href="https://discord.gg/re63kWKxaz" target="_blank" rel="noopener">Discord</a>
+          ${shouldRenderCommunityNudge(PRIVATE_WORKSPACE_ENABLED) ? '<a href="https://discord.gg/re63kWKxaz" target="_blank" rel="noopener">Discord</a>' : ''}
           <a href="https://x.com/worldmonitorai" target="_blank" rel="noopener">X</a>
           ${this.ctx.isDesktopApp ? '' : `<span id="footerDownloadMount"></span>`}
         </nav>
@@ -3472,7 +3481,11 @@ export class PanelLayoutManager implements AppModule {
 
     this.ctx.map.initEscalationGetters();
     this.ctx.currentTimeRange = this.ctx.map.getTimeRange();
-    markLcpDebug('wm:map:container-ready');
+    // The constructor selects the requested renderer asynchronously. Reconcile
+    // the button and storage after it settles so fallback cannot claim 3D.
+    void this.ctx.map.whenRendererReady()
+      .then(() => syncVisibleMapDimension(this.ctx))
+      .catch(() => syncVisibleMapDimension(this.ctx));
 
     this.ctx.map.onTimeRangeChanged((range) => {
       this.ctx.currentTimeRange = range;

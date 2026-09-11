@@ -17,6 +17,10 @@ import {
 } from '@/services/pro-banner-policy';
 import { t } from '@/services/i18n';
 import { setTrustedHtml, trustedHtml } from '@/utils/dom-utils';
+import {
+  PRIVATE_WORKSPACE_ENABLED,
+  shouldRenderHostedMarketing,
+} from '@/config/private-workspace';
 
 
 let bannerEl: HTMLElement | null = null;
@@ -214,6 +218,11 @@ export function showProBanner(container: HTMLElement): void {
   // free" and "initially premium then downgrade" trajectories.
   bannerContainer = container;
 
+  if (!shouldRenderHostedMarketing(PRIVATE_WORKSPACE_ENABLED)) {
+    setReservation(false);
+    return;
+  }
+
   if (bannerEl && !bannerEl.isConnected) {
     bannerEl = null;
   }
@@ -331,6 +340,11 @@ export function isProBannerVisible(): boolean {
 //     → re-mount via showProBanner. Same gate set as the initial mount path,
 //       so we can never surface a banner the user has already ✕'d this week.
 function syncProBanner(): void {
+  if (!shouldRenderHostedMarketing(PRIVATE_WORKSPACE_ENABLED)) {
+    hideProBanner();
+    return;
+  }
+
   const {
     premium,
     accountBacked,

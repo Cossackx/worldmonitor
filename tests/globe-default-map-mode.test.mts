@@ -75,13 +75,19 @@ describe('default map mode', () => {
     );
   });
 
+  it('does not let cesiumSpike force 3D when the persisted mode is 2D', () => {
+    const mapContainer = readSrc('src/components/MapContainer.ts');
+    assert.match(mapContainer, /this\.useGlobe\s*=\s*preferGlobe\s*&&\s*this\.hasGlobeSupport\(\)/);
+    assert.doesNotMatch(mapContainer, /this\.useGlobe\s*=\s*this\.useCesiumSpike/);
+  });
+
   it('does not require the stricter deck.gl WebGL2 gate before selecting globe mode', () => {
     const mapContainer = readSrc('src/components/MapContainer.ts');
 
     assert.match(
       mapContainer,
-      /this\.useGlobe\s*=\s*preferGlobe\s*&&\s*this\.hasGlobeSupport\(\)/,
-      'globe mode should use its own capability check',
+      /this\.useCesiumSpike\s*=\s*this\.chrome\s*&&\s*this\.isCesiumSpikeEnabled\(\)[\s\S]*this\.useGlobe\s*=\s*preferGlobe\s*&&\s*this\.hasGlobeSupport\(\)/,
+      'the Cesium spike must not override the explicit persisted mode',
     );
     assert.match(
       mapContainer,

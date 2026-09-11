@@ -155,6 +155,7 @@ import type { HappinessData } from '@/services/happiness-data';
 import type { RenewableInstallation } from '@/services/renewable-installations';
 import type { SpeciesRecovery } from '@/services/conservation-data';
 import { getCountriesGeoJson, getCountryAtCoordinates, getCountryBbox, getCountryCentroid } from '@/services/country-geometry';
+import { CONFLICT_COUNTRY_ISO, resolveConflictZoneFeatures, shouldSimplifyConflictGeometry } from '../../shared/conflict-zone-geometry';
 import type { DiseaseOutbreakItem } from '@/services/disease-outbreaks';
 import type { FeatureCollection, Geometry } from 'geojson';
 import type { ResilienceRankingItem } from '@/services/resilience';
@@ -365,12 +366,6 @@ const NUCLEAR_ICON_MAPPING = { hexagon: { x: 0, y: 0, width: 32, height: 32, mas
 const DATACENTER_ICON_MAPPING = { square: { x: 0, y: 0, width: 32, height: 32, mask: true } };
 const AIRCRAFT_ICON_MAPPING = { plane: { x: 0, y: 0, width: 32, height: 32, mask: true } };
 
-const CONFLICT_COUNTRY_ISO: Record<string, string[]> = {
-  iran: ['IR'],
-  ukraine: ['UA'],
-  sudan: ['SD'],
-  myanmar: ['MM'],
-};
 
 // Altitude-based color gradient matching Wingbits' color scheme.
 // Transitions cyan (sea level) → yellow-green → orange → red (cruise altitude).
@@ -403,14 +398,6 @@ function altitudeToColor(altFt: number): [number, number, number] {
     }
   }
   return [last.r, last.g, last.b]; // unreachable: exhaustive bracket search above satisfies TS
-}
-
-function ensureClosedRing(ring: [number, number][]): [number, number][] {
-  if (ring.length < 2) return ring;
-  const first = ring[0]!;
-  const last = ring[ring.length - 1]!;
-  if (first[0] === last[0] && first[1] === last[1]) return ring;
-  return [...ring, first];
 }
 
 /** Module-level Map from routeId → waypoint IDs. Built once, reused across all layer renders. */
@@ -2777,32 +2764,7 @@ export class DeckGLMap {
       if (bounds) bounded.push({ bounds, feature });
     };
 
-    for (const zone of CONFLICT_ZONES) {
-      const isoCodes = CONFLICT_COUNTRY_ISO[zone.id];
-      let usedCountryGeometry = false;
-
-      if (isoCodes?.length && this.countriesGeoJsonData) {
-        for (const feature of this.countriesGeoJsonData.features) {
-          const code = feature.properties?.['ISO3166-1-Alpha-2'];
-          if (typeof code !== 'string' || !isoCodes.includes(code)) continue;
-
-          push({
-            type: 'Feature',
-            properties: { id: zone.id, name: zone.name, intensity: zone.intensity },
-            geometry: feature.geometry,
-          });
-          usedCountryGeometry = true;
-        }
-      }
-
-      if (usedCountryGeometry) continue;
-
-      push({
-        type: 'Feature',
-        properties: { id: zone.id, name: zone.name, intensity: zone.intensity },
-        geometry: { type: 'Polygon', coordinates: [ensureClosedRing(zone.coords)] },
-      });
-    }
+    for (const feature of resolveConflictZoneFeatures(CONFLICT_ZONES, CONFLICT_COUNTRY_ISO, this.countriesGeoJsonData)) push(feature);
 
     this.conflictZoneBounded = bounded;
     return bounded;
@@ -2858,7 +2820,8 @@ export class DeckGLMap {
     const features: GeoJSON.Feature[] = indices.map((i) => {
       const feature = bounded[i]?.feature;
       if (!feature) return null;
-      return tolerance > 0 ? { ...feature, geometry: simplifyGeometry(feature.geometry, tolerance) } : feature;
+      const canSimplify = tolerance > 0 && shouldSimplifyConflictGeometry(feature as import('../../shared/conflict-zone-geometry').ConflictZoneFeature);
+      return canSimplify ? { ...feature, geometry: simplifyGeometry(feature.geometry, tolerance) } : feature;
     }).filter((f): f is GeoJSON.Feature => f !== null);
 
     this.conflictZoneGeoJson = { type: 'FeatureCollection', features };
@@ -2929,8 +2892,12 @@ export class DeckGLMap {
       data,
       filled: true,
       stroked: true,
-      getFillColor: () => COLORS.conflict,
-      getLineColor: () => getCurrentTheme() === 'light'
+      getFillColor: (feature) => feature.properties?.geometryKind === 'regional'
+        ? [255, 120, 0, 55] as [number, number, number, number]
+        : COLORS.conflict,
+      getLineColor: (feature) => feature.properties?.geometryKind === 'regional'
+        ? [255, 150, 0, 210] as [number, number, number, number]
+        : getCurrentTheme() === 'light'
         ? [255, 0, 0, 120] as [number, number, number, number]
         : [255, 0, 0, 180] as [number, number, number, number],
       getLineWidth: 2,
@@ -4955,9 +4922,11 @@ export class DeckGLMap {
         const severity = String(obj.severity || 'watch').toUpperCase();
         return { html: `<div class="deckgl-tooltip"><strong>${text(obj.country)} · ${text(obj.product)}</strong><br/>${text(obj.description)}<br/><strong>${text(severity)}</strong></div>` };
       }
-      case 'conflict-zones-layer': {
+      case 'conflict-zones-layer':
+      case 'conflict-zones-layer-country-geometry': {
         const props = obj.properties || obj;
-        return { html: `<div class="deckgl-tooltip"><strong>${text(props.name)}</strong><br/>${t('components.deckgl.tooltip.conflictZone')}</div>` };
+        const geometryLabel = props.geometryKind === 'regional' ? 'Approximate conflict area' : 'Country geometry';
+        return { html: `<div class="deckgl-tooltip"><strong>${text(props.label || props.name)}</strong><br/>${geometryLabel}<br/>${t('components.deckgl.tooltip.conflictZone')}</div>` };
       }
 
       case 'natural-events-layer':

@@ -2,6 +2,10 @@ import { subscribeAuthState, type AuthSession } from '@/services/auth-state';
 import { mountUserButton, openSignIn, openSignUp } from '@/services/clerk';
 import { t } from '@/services/i18n';
 import { setTrustedHtml, trustedHtml } from '@/utils/dom-utils';
+import {
+  PRIVATE_WORKSPACE_ENABLED,
+  shouldRenderHostedAuthCtas,
+} from '@/config/private-workspace';
 
 export class AuthHeaderWidget {
   private container: HTMLElement;
@@ -65,6 +69,8 @@ export class AuthHeaderWidget {
     this.container.setAttribute('aria-busy', 'true');
     setTrustedHtml(this.container, trustedHtml('', 'legacy direct innerHTML migration'));
 
+    if (!shouldRenderHostedAuthCtas(PRIVATE_WORKSPACE_ENABLED, false)) return;
+
     const signInSkeleton = document.createElement('span');
     signInSkeleton.className = 'auth-header-skeleton auth-header-skeleton-signin';
     signInSkeleton.setAttribute('aria-hidden', 'true');
@@ -77,6 +83,8 @@ export class AuthHeaderWidget {
   }
 
   private renderSignedOut(): void {
+    if (!shouldRenderHostedAuthCtas(PRIVATE_WORKSPACE_ENABLED, false)) return;
+
     const signInBtn = document.createElement('button');
     signInBtn.className = 'auth-signin-btn';
     signInBtn.textContent = t('auth.signIn');

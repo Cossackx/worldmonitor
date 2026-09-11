@@ -1,0 +1,101 @@
+{
+  "base": "http://127.0.0.1:4187/",
+  "state": {
+    "rendererClass": "map-container deckgl-mode",
+    "webgl2": true,
+    "webgl1": false,
+    "vendor": "Google Inc. (Intel)",
+    "renderer": "ANGLE (Intel, Intel(R) Graphics (0x00007D67) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36",
+    "touchPoints": 0,
+    "viewport": {
+      "width": 1440,
+      "height": 1000
+    },
+    "canvasCount": 1,
+    "svgCount": 95,
+    "relevantStorage": {
+      "worldmonitor-free-map-panel-access-v1": "done",
+      "worldmonitor-map-mode": "\"flat\""
+    }
+  },
+  "logs": [
+    {
+      "type": "log",
+      "text": "i18next: initialized {debug: true, initAsync: true, ns: Array(1), defaultNS: Array(1), fallbackLng: Array(1)}"
+    },
+    {
+      "type": "log",
+      "text": "[MapContainer] Initializing deck.gl map (desktop mode)"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"politics\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"us\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"europe\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"middleeast\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"tech\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"ai\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"finance\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"gov\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"layoffs\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"thinktanks\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"crisis\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"africa\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"latam\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"asia\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest missing for \"energy\", limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Intel digest missing, limited per-feed fallback disabled"
+    },
+    {
+      "type": "warning",
+      "text": "[News] Digest fetch failed, using fallback: TimeoutError: signal timed out"
+    }
+  ],
+  "pageErrors": []
+}

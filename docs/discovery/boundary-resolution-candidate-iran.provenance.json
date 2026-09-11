@@ -1,0 +1,59 @@
+{
+  "proposal": "NOT PRODUCTION — parent must review dataset and browser rendering before applying",
+  "candidate": {
+    "path": "docs/discovery/boundary-resolution-candidate-iran.geojson",
+    "sha256": "7190c49562a0ad022893bf2f3cbf34f4dc7c15481f829efaf9dd5615da22f030",
+    "sourceFeatureCount": 242,
+    "iran": {
+      "type": "MultiPolygon",
+      "polygons": 2,
+      "rings": 2,
+      "points": 605,
+      "bbox": [
+        44.023242,
+        25.1021,
+        63.305176,
+        39.768555
+      ],
+      "closedRings": 2
+    }
+  },
+  "source": {
+    "dataset": "Natural Earth Admin 0 Countries, 50m cultural vectors",
+    "repository": "https://github.com/nvkelso/natural-earth-vector",
+    "commit": "ca96624a56bd078437bca8184e78163e5039ad19",
+    "url": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_50m_admin_0_countries.geojson",
+    "license": "Natural Earth public domain; see license URL",
+    "licenseUrl": "https://github.com/nvkelso/natural-earth-vector/blob/master/LICENSE.md",
+    "downloadedSha256": "3e458fc036ad0a66411f2c1e6cac49c5d7bfb81cb1123bc513b22511a2b7fdeb"
+  },
+  "base": {
+    "path": "public/data/countries.geojson",
+    "sha256": "195417e48173736983685bd1bfce91c6a8a28a63a7fea6ffa036191f354617b1",
+    "featureCount": 258,
+    "iran": {
+      "type": "Polygon",
+      "polygons": 1,
+      "rings": 1,
+      "points": 57,
+      "bbox": [
+        44.061372,
+        25.202094,
+        62.753564,
+        39.685279
+      ],
+      "closedRings": 1
+    }
+  },
+  "checks": {
+    "iso2": true,
+    "iso3": true,
+    "name": true,
+    "bboxWithinLongitude": true,
+    "bboxWithinLatitude": true,
+    "ringsClosed": true,
+    "sourceFeatureCount": true,
+    "baseFeatureCount": true
+  },
+  "runtimeNote": "Fixture is local. Existing runtime override fetch is not modified; no WorldMonitor service dependency is introduced by this proposal."
+}

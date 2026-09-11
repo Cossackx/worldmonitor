@@ -5307,6 +5307,22 @@ body.playback-mode .status-dot {
   touch-action: none;
 }
 
+.cesium-spike-limitations-banner {
+  position: absolute;
+  z-index: 20;
+  top: 8px;
+  left: 8px;
+  max-width: min(440px, calc(100% - 16px));
+  padding: 6px 9px;
+  border: 1px solid color-mix(in srgb, var(--yellow, #f2d58a) 70%, transparent);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--map-bg, #06111f) 88%, transparent);
+  color: var(--yellow, #f2d58a);
+  font-size: 11px;
+  line-height: 1.35;
+  pointer-events: none;
+}
+
 .map-container.map-renderer-shell {
   contain: layout paint;
   background:
@@ -6378,7 +6394,7 @@ body.playback-mode .status-dot {
 
 /* Conflict zones */
 .conflict-zone {
-  fill: rgba(var(--semantic-critical), 0.2);
+  fill: color-mix(in srgb, var(--semantic-critical) 20%, transparent);
   stroke: var(--red);
   stroke-width: 1;
   stroke-dasharray: 4, 2;

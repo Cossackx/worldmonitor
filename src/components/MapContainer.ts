@@ -81,6 +81,7 @@ type PendingViewportAction =
   | { type: 'center'; lat: number; lon: number; zoom?: number; actionToken: number };
 
 let mapLibreCssPromise: Promise<unknown> | null = null;
+let cesiumSpikeAssetsPromise: Promise<unknown> | null = null;
 
 function afterFirstPaint(): Promise<void> {
   if (typeof window === 'undefined' || typeof window.requestAnimationFrame !== 'function') {
@@ -96,6 +97,17 @@ function afterFirstPaint(): Promise<void> {
 function loadMapLibreCss(): Promise<unknown> {
   mapLibreCssPromise ??= import('maplibre-gl/dist/maplibre-gl.css');
   return mapLibreCssPromise;
+}
+
+function loadCesiumSpikeAssets(): Promise<unknown> {
+  // Keep the dev-only spike self-contained: Cesium workers and widgets are
+  // served from this origin instead of a CDN, and no ion/provider key is set.
+  cesiumSpikeAssetsPromise ??= (async () => {
+    (globalThis as typeof globalThis & { CESIUM_BASE_URL?: string }).CESIUM_BASE_URL =
+      '/node_modules/cesium/Build/Cesium/';
+    await import('cesium/Build/Cesium/Widgets/widgets.css');
+  })();
+  return cesiumSpikeAssetsPromise;
 }
 
 const DECK_RENDERER_VISIBLE_IDLE_DELAY_MS = 3_500;
@@ -169,6 +181,7 @@ export class MapContainer {
   private deckGLMap: DeckGLMap | null = null;
   private svgMap: MapComponent | null = null;
   private globeMap: GlobeMap | null = null;
+  private useCesiumSpike: boolean;
   private supplyChainPanel: import('@/components/SupplyChainPanel').SupplyChainPanel | null = null;
   private initialState: MapContainerState;
   private useDeckGL: boolean;
@@ -274,6 +287,11 @@ export class MapContainer {
     );
     this.isFreeTierFallbackActive = options.isFreeTierFallbackActive ?? null;
     this.isMobile = isMobileDevice();
+    // Keep the explicit spike on the main dashboard; embeds retain their
+    // existing renderer/data contract even if the parent URL is shared.
+    // The spike selects the renderer used by an explicit 3D mode; it must not
+    // override the persisted 2D preference just because the query flag is set.
+    this.useCesiumSpike = this.chrome && this.isCesiumSpikeEnabled();
     this.useGlobe = preferGlobe && this.hasGlobeSupport();
 
     this.useDeckGL = !this.useGlobe && this.shouldUseDeckGL();
@@ -332,6 +350,11 @@ export class MapContainer {
     }
   }
 
+  private isCesiumSpikeEnabled(): boolean {
+    if (!import.meta.env.DEV || typeof window === 'undefined') return false;
+    return new URLSearchParams(window.location.search).get('cesiumSpike') === '1';
+  }
+
   private shouldUseDeckGL(): boolean {
     // Keep the default mobile path on the lightweight SVG renderer. High-end
     // phones can still request globe mode explicitly via the persisted mode,
@@ -367,6 +390,13 @@ export class MapContainer {
     this.container.removeAttribute('aria-busy');
     this.container.textContent = '';
     this.container.classList.add(modeClass);
+    if (this.useCesiumSpike) {
+      const banner = document.createElement('div');
+      banner.className = 'cesium-spike-limitations-banner';
+      banner.setAttribute('role', 'note');
+      banner.textContent = '3D prototype · OpenStreetMap basemap · limited event layers';
+      this.container.appendChild(banner);
+    }
   }
 
   private sanitizeNonDeckLayers(): void {
@@ -605,6 +635,27 @@ export class MapContainer {
     const globeToken = ++this.globeInitToken;
     try {
       markLcpDebug('wm:map:globe-init-start');
+      if (this.useCesiumSpike) {
+        await loadCesiumSpikeAssets();
+        const [{ CesiumMapAdapter }, { createCesiumMapBridge }] = await Promise.all([
+          import('./CesiumMapAdapter'),
+          import('./CesiumMapBridge'),
+        ]);
+        if (!this.isCurrentRendererInit(rendererToken)) return;
+        this.prepareRendererDom('globe-mode');
+        this.globeMap = createCesiumMapBridge(new CesiumMapAdapter(this.container, this.initialState, {
+          onInitError: (error) => this.handleGlobeInitFailure(globeToken, error),
+          chrome: this.chrome,
+          enableKeylessBasemap: true,
+        }));
+        this.rehydrateActiveMap();
+        void this.globeMap.whenReady().then(() => {
+          if (!this.isCurrentRendererInit(rendererToken) || !this.useGlobe) return;
+          this.markRendererReady(rendererToken);
+          markLcpDebug('wm:map:cesium-ready');
+        }).catch(() => {});
+        return;
+      }
       const { GlobeMap } = await import('./GlobeMap');
       if (!this.isCurrentRendererInit(rendererToken)) return;
       this.prepareRendererDom('globe-mode');
@@ -625,6 +676,14 @@ export class MapContainer {
 
   private handleGlobeInitFailure(token: number, error: unknown): void {
     if (token !== this.globeInitToken || !this.useGlobe) return;
+    if (this.useCesiumSpike) {
+      console.warn('[MapContainer] Cesium spike initialization failed, falling back to GlobeMap', error);
+      this.globeMap?.destroy();
+      this.globeMap = null;
+      this.useCesiumSpike = false;
+      void this.createGlobeMap(this.rendererInitToken);
+      return;
+    }
     console.warn('[MapContainer] Globe initialization failed, falling back to SVG map', error);
     this.globeMap?.destroy();
     this.globeMap = null;

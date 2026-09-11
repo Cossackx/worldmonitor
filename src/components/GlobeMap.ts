@@ -83,6 +83,8 @@ import {
 } from './premium-layer-gate';
 import { globeAltitudeToMapZoom, mapZoomToGlobeAltitude } from '@/utils/globe-zoom';
 import { headingToCompass } from '@/utils/heading-to-compass';
+import { normalizeGlobePolygonRings } from '@/utils/globe-polygon-winding';
+import { CONFLICT_COUNTRY_ISO, resolveConflictZoneFeatures } from '../../shared/conflict-zone-geometry';
 
 export interface GlobeMapOptions {
   onInitError?: (error: unknown) => void;
@@ -456,6 +458,8 @@ interface GlobePolygon {
   intensity?: string;
   parties?: string[];
   casualties?: string;
+  geometryKind?: 'country' | 'regional';
+  label?: string;
 
   satellite?: string;
   datetime?: string;
@@ -946,9 +950,10 @@ export class GlobeMap {
     // Polygon accessors — set once
     (globe as any)
       .polygonGeoJsonGeometry((d: GlobePolygon) => ({ type: 'Polygon', coordinates: d.coords }))
+      .polygonCapCurvatureResolution(1)
       .polygonCapColor((d: GlobePolygon) => {
         if (d._kind === 'cii') return GlobeMap.CII_GLOBE_COLORS[d.level!] ?? 'rgba(0,0,0,0)';
-        if (d._kind === 'conflict') return GlobeMap.CONFLICT_CAP[d.intensity!] ?? GlobeMap.CONFLICT_CAP.low;
+        if (d._kind === 'conflict') return d.geometryKind === 'regional' ? 'rgba(255,120,0,0.18)' : GlobeMap.CONFLICT_CAP[d.intensity!] ?? GlobeMap.CONFLICT_CAP.low;
         if (d._kind === 'imageryFootprint') return 'rgba(0,0,0,0)';
         if (d._kind === 'forecastCone') return 'rgba(255,140,60,0.2)';
         if (d._kind === 'scenario') return 'rgba(220,60,40,0.3)';
@@ -956,7 +961,7 @@ export class GlobeMap {
       })
       .polygonSideColor((d: GlobePolygon) => {
         if (d._kind === 'cii') return 'rgba(0,0,0,0)';
-        if (d._kind === 'conflict') return GlobeMap.CONFLICT_SIDE[d.intensity!] ?? GlobeMap.CONFLICT_SIDE.low;
+        if (d._kind === 'conflict') return d.geometryKind === 'regional' ? 'rgba(255,120,0,0.08)' : GlobeMap.CONFLICT_SIDE[d.intensity!] ?? GlobeMap.CONFLICT_SIDE.low;
         if (d._kind === 'imageryFootprint') return 'rgba(0,0,0,0)';
         if (d._kind === 'forecastCone') return 'rgba(255,140,60,0.1)';
         if (d._kind === 'scenario') return 'rgba(0,0,0,0)';
@@ -964,7 +969,7 @@ export class GlobeMap {
       })
       .polygonStrokeColor((d: GlobePolygon) => {
         if (d._kind === 'cii') return 'rgba(80,80,80,0.3)';
-        if (d._kind === 'conflict') return GlobeMap.CONFLICT_STROKE[d.intensity!] ?? GlobeMap.CONFLICT_STROKE.low;
+        if (d._kind === 'conflict') return d.geometryKind === 'regional' ? '#ff9600' : GlobeMap.CONFLICT_STROKE[d.intensity!] ?? GlobeMap.CONFLICT_STROKE.low;
         if (d._kind === 'imageryFootprint') return '#00b4ff';
         if (d._kind === 'forecastCone') return 'rgba(255,140,60,0.5)';
         if (d._kind === 'scenario') return 'transparent';
@@ -972,13 +977,16 @@ export class GlobeMap {
       })
       .polygonAltitude((d: GlobePolygon) => {
         if (d._kind === 'cii') return 0.002;
-        if (d._kind === 'conflict') return GlobeMap.CONFLICT_ALT[d.intensity!] ?? GlobeMap.CONFLICT_ALT.low;
+        // Country conflict polygons are the canonical GeoJSON boundary and must
+        // conform to the globe surface; regional areas retain a small lift so
+        // their approximate outline remains legible above the texture.
+        if (d._kind === 'conflict') return d.geometryKind === 'country' ? 0.0002 : GlobeMap.CONFLICT_ALT[d.intensity!] ?? GlobeMap.CONFLICT_ALT.low;
         return 0.005;
       })
       .polygonLabel((d: GlobePolygon) => {
         if (d._kind === 'cii') return `<b>${escapeHtml(d.name)}</b><br/>CII: ${d.score}/100 (${escapeHtml(d.level ?? '')})`;
         if (d._kind === 'conflict') {
-          let label = `<b>${escapeHtml(d.name)}</b>`;
+          let label = `<b>${escapeHtml(d.label ?? d.name)}</b>`;
           if (d.parties?.length) label += `<br/>Parties: ${d.parties.map(p => escapeHtml(p)).join(', ')}`;
           if (d.casualties) label += `<br/>Casualties: ${escapeHtml(d.casualties)}`;
           return label;
@@ -2343,7 +2351,7 @@ export class GlobeMap {
     const key = `${zoneId}:${countryIso}:${ringIdx}`;
     let cached = this.reversedRingCache.get(key);
     if (!cached) {
-      cached = ring.map((r: number[][]) => [...r].reverse());
+      cached = normalizeGlobePolygonRings(ring);
       this.reversedRingCache.set(key, cached);
     }
     return cached;
@@ -2355,30 +2363,21 @@ export class GlobeMap {
     const polys: GlobePolygon[] = [];
 
     if (this.layers.conflicts) {
-      const CONFLICT_ISO: Record<string, string[]> = {
-        iran: ['IR'], ukraine: ['UA'], gaza: ['PS', 'IL'], sudan: ['SD'], myanmar: ['MM'],
-      };
-      for (const z of CONFLICT_ZONES) {
-        const isoCodes = CONFLICT_ISO[z.id];
-        if (isoCodes && this.countriesGeoData) {
-          for (const feat of this.countriesGeoData.features) {
-            const code = feat.properties?.['ISO3166-1-Alpha-2'] as string | undefined;
-            if (!code || !isoCodes.includes(code)) continue;
-            const geom = feat.geometry;
-            if (!geom) continue;
-            const rings = geom.type === 'Polygon' ? [geom.coordinates] : geom.type === 'MultiPolygon' ? geom.coordinates : [];
-            for (let ri = 0; ri < rings.length; ri++) {
-              polys.push({
-                coords: this.getReversedRing(z.id, code, ri, rings[ri] as number[][][]),
-                name: z.name,
-                _kind: 'conflict',
-                intensity: z.intensity ?? 'low',
-                parties: z.parties,
-                casualties: z.casualties,
-              });
-            }
-          }
-        }
+      for (const feature of resolveConflictZoneFeatures(CONFLICT_ZONES, CONFLICT_COUNTRY_ISO, this.countriesGeoData)) {
+        const props = feature.properties;
+        const geometry = feature.geometry;
+        const rings = geometry.type === 'Polygon' ? [geometry.coordinates] : geometry.type === 'MultiPolygon' ? geometry.coordinates : [];
+        const zone = CONFLICT_ZONES.find((candidate) => candidate.id === props.id);
+        for (let ri = 0; ri < rings.length; ri++) polys.push({
+          coords: this.getReversedRing(props.id, props.countryCode ?? (props.geometryKind === 'country' ? (CONFLICT_COUNTRY_ISO[props.id]?.[0] ?? '') : 'regional'), ri, rings[ri] as number[][][]),
+          name: props.name,
+          label: props.label,
+          geometryKind: props.geometryKind,
+          _kind: 'conflict',
+          intensity: props.intensity ?? 'low',
+          parties: zone?.parties,
+          casualties: zone?.casualties,
+        });
       }
     }
 

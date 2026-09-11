@@ -5,6 +5,7 @@ import {
   buildMapUrl,
   readDashboardSearchQuery,
   DASHBOARD_SEARCH_QUERY_MAX_CHARS,
+  preserveDevCesiumSpikeParam,
 } from '../src/utils/urlState.ts';
 
 const EMPTY_LAYERS = {
@@ -68,6 +69,28 @@ describe('readDashboardSearchQuery', () => {
     assert.equal(
       readDashboardSearchQuery(`?q=${oversized}`)?.length,
       DASHBOARD_SEARCH_QUERY_MAX_CHARS,
+    );
+  });
+});
+
+describe('preserveDevCesiumSpikeParam', () => {
+  it('keeps the spike switch during dev URL state writes', () => {
+    const next = preserveDevCesiumSpikeParam(
+      'https://worldmonitor.app/dashboard?view=global',
+      '?cesiumSpike=1&view=global',
+      true,
+    );
+    assert.equal(new URL(next).searchParams.get('cesiumSpike'), '1');
+  });
+
+  it('does not carry the spike switch outside dev or when absent', () => {
+    assert.equal(
+      preserveDevCesiumSpikeParam('https://worldmonitor.app/dashboard?view=global', '?cesiumSpike=1', false),
+      'https://worldmonitor.app/dashboard?view=global',
+    );
+    assert.equal(
+      preserveDevCesiumSpikeParam('https://worldmonitor.app/dashboard?view=global', '?view=global', true),
+      'https://worldmonitor.app/dashboard?view=global',
     );
   });
 });

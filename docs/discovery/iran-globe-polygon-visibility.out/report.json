@@ -1,0 +1,50 @@
+{
+  "base": "http://127.0.0.1:4187",
+  "assertion": "A loaded Iran polygon is render-visible when its screenshot differs materially from the identical empty globe.",
+  "metadata": {
+    "polygonCount": 1,
+    "ringCount": 1,
+    "pointCount": 57,
+    "bbox": [
+      44.061372,
+      25.202094,
+      62.753564,
+      39.685279
+    ]
+  },
+  "threshold": 24,
+  "variants": {
+    "normalizedAltitude006": {
+      "changedPixels": 76472,
+      "meanChangedDelta": 222.84,
+      "bounds": {
+        "x": 434,
+        "y": 262,
+        "width": 373,
+        "height": 343
+      }
+    },
+    "reversedAltitude006": {
+      "changedPixels": 113711,
+      "meanChangedDelta": 198.92,
+      "bounds": {
+        "x": 0,
+        "y": 82,
+        "width": 1200,
+        "height": 818
+      }
+    },
+    "normalizedSurface": {
+      "changedPixels": 71280,
+      "meanChangedDelta": 220.67,
+      "bounds": {
+        "x": 436,
+        "y": 264,
+        "width": 369,
+        "height": 339
+      }
+    }
+  },
+  "errors": [],
+  "pass": true
+}

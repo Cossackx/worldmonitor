@@ -1,4 +1,5 @@
 import { t } from '@/services/i18n';
+import { PRIVATE_WORKSPACE_ENABLED, shouldRenderCommunityNudge } from '@/config/private-workspace';
 import { getDismissed, setDismissed } from '@/utils/cross-domain-storage';
 import { setTrustedHtml, trustedHtml } from '@/utils/dom-utils';
 
@@ -7,6 +8,7 @@ const DISMISSED_KEY = 'wm-community-dismissed-v2';
 const DISCUSSION_URL = 'https://discord.gg/re63kWKxaz';
 
 export function mountCommunityWidget(): void {
+  if (!shouldRenderCommunityNudge(PRIVATE_WORKSPACE_ENABLED)) return;
   if (getDismissed(DISMISSED_KEY)) return;
   if (document.querySelector('.community-widget')) return;
 

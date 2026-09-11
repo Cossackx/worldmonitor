@@ -233,3 +233,11 @@ export function buildMapUrl(
   url.search = params.toString();
   return url.toString();
 }
+
+/** Preserve the dev-only Cesium spike switch while dashboard state is synced. */
+export function preserveDevCesiumSpikeParam(urlString: string, currentSearch: string, isDev: boolean): string {
+  if (!isDev || new URLSearchParams(currentSearch).get('cesiumSpike') !== '1') return urlString;
+  const url = new URL(urlString);
+  url.searchParams.set('cesiumSpike', '1');
+  return url.toString();
+}
