@@ -3393,7 +3393,7 @@ export class PanelLayoutManager implements AppModule {
     proBadge.textContent = t('widgets.proBadge');
     proBlock.appendChild(proIcon);
     proBlock.appendChild(proLabel);
-    proBlock.appendChild(proBadge);
+    if (shouldRenderHostedBranding(PRIVATE_WORKSPACE_ENABLED)) proBlock.appendChild(proBadge);
     proBlock.addEventListener('click', () => {
       void import('@/components/WidgetChatModal').then((m) => m.openWidgetChatModal({
         mode: 'create',
@@ -3423,7 +3423,7 @@ export class PanelLayoutManager implements AppModule {
     mcpBadge.textContent = t('widgets.proBadge');
     mcpBlock.appendChild(mcpIcon);
     mcpBlock.appendChild(mcpLabel);
-    mcpBlock.appendChild(mcpBadge);
+    if (shouldRenderHostedBranding(PRIVATE_WORKSPACE_ENABLED)) mcpBlock.appendChild(mcpBadge);
     mcpBlock.addEventListener('click', () => {
       void import('@/components/McpConnectModal').then((m) => m.openMcpConnectModal({
         onComplete: (spec) => this.addMcpPanel(spec),

@@ -1,4 +1,5 @@
 import type { CustomWidgetSpec } from '@/services/widget-store';
+import { PRIVATE_WORKSPACE_ENABLED, shouldRenderHostedBranding } from '@/config/private-workspace';
 import { getBrowserTesterKey, getWidgetAgentKey, getProWidgetKey } from '@/services/widget-store';
 import { getClerkToken } from '@/services/clerk';
 import { t } from '@/services/i18n';
@@ -111,7 +112,7 @@ export function openWidgetChatModal(options: WidgetChatOptions): void {
 
   const isModify = options.mode === 'modify';
   const titleText = isModify ? t('widgets.modifyTitle') : t('widgets.chatTitle');
-  const proBadgeHtml = isPro ? `<span class="widget-pro-badge">${escapeHtml(t('widgets.proBadge'))}</span>` : '';
+  const proBadgeHtml = isPro && shouldRenderHostedBranding(PRIVATE_WORKSPACE_ENABLED) ? `<span class="widget-pro-badge">${escapeHtml(t('widgets.proBadge'))}</span>` : '';
 
   setTrustedHtml(modal, trustedHtml(`
     <div class="modal-header">

@@ -1,4 +1,5 @@
 import type { CountryBriefSignals } from '@/types';
+import { PRIVATE_WORKSPACE_ENABLED, shouldRenderHostedBranding } from '@/config/private-workspace';
 import {
   describePropagandaBadge,
   getSourcePropagandaRisk,
@@ -2830,7 +2831,7 @@ export class CountryDeepDivePanel implements CountryBriefPanel {
     });
     const evidenceButton = this.el('button', 'cdp-action-btn cdp-evidence-export-btn', 'Evidence') as HTMLButtonElement;
     evidenceButton.setAttribute('type', 'button');
-    evidenceButton.setAttribute('title', 'Export evidence bundle as Markdown (PRO)');
+    evidenceButton.setAttribute('title', shouldRenderHostedBranding(PRIVATE_WORKSPACE_ENABLED) ? 'Export evidence bundle as Markdown (PRO)' : 'Export evidence bundle as Markdown');
     evidenceButton.addEventListener('click', () => {
       if (!hasPremiumAccess(getAuthState())) {
         trackGateHit('evidence-export');

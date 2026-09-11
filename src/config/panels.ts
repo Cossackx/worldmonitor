@@ -6,6 +6,7 @@ import { isDesktopRuntime } from '@/services/runtime';
 import { getSecretState } from '@/services/runtime-config';
 // boundary-ignore: isEntitled is a pure state check with no side effects
 import { isEntitled } from '@/services/entitlements';
+import { PRIVATE_WORKSPACE_ENABLED, shouldRenderHostedBranding } from './private-workspace';
 
 const _desktop = isDesktopRuntime();
 
@@ -458,8 +459,11 @@ const FINANCE_PANELS: Record<string, PanelConfig> = {
   'windy-webcams': { name: 'Windy Live Webcam', enabled: false, priority: 2 },
   insights: { name: 'AI Market Insights', enabled: true, priority: 1 },
   markets: { name: 'Live Markets', enabled: true, priority: 1 },
-  'stock-analysis': { name: 'Premium Stock Analysis', enabled: true, priority: 1, premium: 'locked' },
-  'stock-backtest': { name: 'Premium Backtesting', enabled: true, priority: 1, premium: 'locked' },
+  // The "Premium" sales prefix is hosted branding; the private workspace lists
+  // the plain feature name (Panel's getPanelDisplayTitle does the same for the
+  // rendered header title).
+  'stock-analysis': { name: shouldRenderHostedBranding(PRIVATE_WORKSPACE_ENABLED) ? 'Premium Stock Analysis' : 'Stock Analysis', enabled: true, priority: 1, premium: 'locked' },
+  'stock-backtest': { name: shouldRenderHostedBranding(PRIVATE_WORKSPACE_ENABLED) ? 'Premium Backtesting' : 'Backtesting', enabled: true, priority: 1, premium: 'locked' },
   'daily-market-brief': { name: 'Daily Market Brief', enabled: true, priority: 1, premium: 'locked' },
   'markets-news': { name: 'Markets News', enabled: true, priority: 2 },
   forex: { name: 'Forex & Currencies', enabled: true, priority: 1 },

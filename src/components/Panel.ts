@@ -10,6 +10,7 @@ import { PanelGateReason } from '@/services/panel-gating';
 import { lockSvg, upgradeSvg } from '@/components/gate-icons';
 import { createCheckoutConsentElement } from '@/utils/legal-links';
 import { WEB_APP_ORIGIN } from '@/config/web-origin';
+import { PRIVATE_WORKSPACE_ENABLED, shouldRenderHostedBranding } from '@/config/private-workspace';
 import { dataFreshness, type PanelFreshnessSummary } from '@/services/data-freshness';
 import { formatPanelFreshnessDisplay } from '@/services/panel-freshness-display';
 import {
@@ -30,6 +31,27 @@ import {
   isPanelGridColumnCountReady,
   setColSpanClass,
 } from '@/utils/panel-grid';
+
+/**
+ * The "Premium …" title prefix and the header PRO chip are hosted-product
+ * sales presentation. The private workspace has no plans, so its panels carry
+ * the plain feature name and no chip; hosted behaviour is unchanged.
+ */
+const HOSTED_PREMIUM_TITLE_PREFIX = /^premium\s+/i;
+
+export function getPanelDisplayTitle(
+  title: string,
+  hostedBranding: boolean = shouldRenderHostedBranding(PRIVATE_WORKSPACE_ENABLED),
+): string {
+  return hostedBranding ? title : title.replace(HOSTED_PREMIUM_TITLE_PREFIX, '');
+}
+
+export function shouldRenderPanelProBadge(
+  premium: unknown,
+  hostedBranding: boolean = shouldRenderHostedBranding(PRIVATE_WORKSPACE_ENABLED),
+): boolean {
+  return Boolean(premium) && hostedBranding && !getSecretState('WORLDMONITOR_API_KEY').present;
+}
 
 export type PanelSeverity = 'critical' | 'high' | 'medium' | 'low' | 'none';
 
@@ -205,7 +227,7 @@ export class Panel {
 
     const title = document.createElement('span');
     title.className = 'panel-title';
-    title.textContent = options.title;
+    title.textContent = getPanelDisplayTitle(options.title);
     // Panels are the dashboard's sections, but a real <h2> would drag along
     // element styles; role/aria-level gives the outline with zero visual change.
     title.setAttribute('role', 'heading');
@@ -259,7 +281,7 @@ export class Panel {
       headerLeft.appendChild(this.newBadgeEl);
     }
 
-    if (options.premium && !getSecretState('WORLDMONITOR_API_KEY').present) {
+    if (shouldRenderPanelProBadge(options.premium)) {
       const proBadge = h('span', { className: 'panel-pro-badge' }, t('premium.pro'));
       headerLeft.appendChild(proBadge);
     }

@@ -1,4 +1,4 @@
-import { Panel } from './Panel';
+import { Panel, shouldRenderPanelProBadge } from './Panel';
 import type { CustomWidgetSpec } from '@/services/widget-store';
 import { t } from '@/services/i18n';
 import { wrapWidgetHtml, wrapProWidgetHtml } from '@/utils/widget-sanitizer';
@@ -37,7 +37,7 @@ export class CustomWidgetPanel extends Panel {
       }));
     });
 
-    if (this.spec.tier === 'pro') {
+    if (shouldRenderPanelProBadge(this.spec.tier === 'pro')) {
       const badge = h('span', { className: 'widget-pro-badge' }, t('widgets.proBadge'));
       if (closeBtn) {
         this.header.insertBefore(badge, closeBtn);

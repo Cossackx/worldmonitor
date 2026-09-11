@@ -1,4 +1,5 @@
 import { PANEL_CATEGORY_MAP, getVariantPanelCategories, getProPanelKeys } from '@/config/panels';
+import { PRIVATE_WORKSPACE_ENABLED, shouldRenderHostedBranding } from '@/config/private-workspace';
 import { SITE_VARIANT } from '@/config';
 import { t } from '@/services/i18n';
 import type { PanelConfig } from '@/types';
@@ -55,7 +56,7 @@ export class MobilePanelNav {
       { key: 'all', label: t('header.sourceRegionAll') },
       // PRO right after All: one tap surfaces the whole premium suite —
       // each panel renders its own unlock CTA (the mobile conversion path).
-      ...(this.proPanelKeys.size > 0
+      ...(this.proPanelKeys.size > 0 && shouldRenderHostedBranding(PRIVATE_WORKSPACE_ENABLED)
         ? [{ key: PRO_CATEGORY, label: `⚡ ${t('widgets.proBadge')}` }]
         : []),
       ...getVariantPanelCategories(settings, SITE_VARIANT)

@@ -48,6 +48,28 @@ test('the map layer-tray author badge is gated in both 2D and 3D renderers', () 
   }
 });
 
+test('panel-header PRO chip and "Premium" title prefix sit behind the hosted-branding gate', () => {
+  const panel = readFileSync(resolve(root, 'src/components/Panel.ts'), 'utf8');
+  assert.match(panel, /shouldRenderHostedBranding\(PRIVATE_WORKSPACE_ENABLED\)/);
+  // The only panel-pro-badge creation goes through the gated predicate.
+  assert.equal(panel.match(/panel-pro-badge/g)?.length, 1);
+  assert.match(panel, /if \(shouldRenderPanelProBadge\(options\.premium\)\) \{\s*const proBadge = h\('span', \{ className: 'panel-pro-badge' \}/);
+  assert.match(panel, /title\.textContent = getPanelDisplayTitle\(options\.title\);/);
+  assert.doesNotMatch(panel, /title\.textContent = options\.title;/);
+
+  const customWidget = readFileSync(resolve(root, 'src/components/CustomWidgetPanel.ts'), 'utf8');
+  assert.match(customWidget, /if \(shouldRenderPanelProBadge\(this\.spec\.tier === 'pro'\)\)/);
+
+  // The finance variant's "Premium …" panel names are gated the same way.
+  const panels = readFileSync(resolve(root, 'src/config/panels.ts'), 'utf8');
+  for (const premiumName of ["'Premium Stock Analysis'", "'Premium Backtesting'"]) {
+    const idx = panels.indexOf(premiumName);
+    assert.ok(idx > 0, `${premiumName} no longer configured`);
+    assert.equal(panels.indexOf(premiumName, idx + 1), -1, `${premiumName} configured more than once`);
+    assert.match(panels.slice(Math.max(0, idx - 80), idx), /shouldRenderHostedBranding\(PRIVATE_WORKSPACE_ENABLED\) \? $/, `${premiumName} is not gated`);
+  }
+});
+
 test('private workspace unlocks every entitlement seam the app consults', () => {
   for (const [file, marker] of [
     ['src/services/entitlements.ts', 'PRIVATE_WORKSPACE_ENTITLEMENT'],
