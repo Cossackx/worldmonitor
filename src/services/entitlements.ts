@@ -15,6 +15,7 @@ import {
 } from './convex-client';
 import { getCurrentClerkUser } from './clerk';
 import { hasAccountEmbedAccess } from '../../shared/embed-access';
+import { PRIVATE_WORKSPACE_ENABLED, shouldUnlockAllFeatures } from '@/config/private-workspace';
 
 export interface EntitlementState {
   planKey: string;
@@ -79,8 +80,43 @@ export type EntitlementVerificationStatus =
   | 'ready'
   | 'unavailable';
 
+/**
+ * Private workspace: a personal build with no plans. Every consumer that asks
+ * "is this account entitled?" gets a synthetic, never-expiring full
+ * entitlement so locks, badges and upgrade prompts never appear. Convex/Clerk
+ * state is still tracked underneath for the hosted code paths, but it is
+ * never the answer here.
+ */
+export const PRIVATE_WORKSPACE_ENTITLEMENT: EntitlementState = Object.freeze({
+  planKey: 'private-workspace',
+  features: Object.freeze({
+    tier: 9,
+    apiAccess: true,
+    apiRateLimit: Number.MAX_SAFE_INTEGER,
+    planLimits: Object.freeze({
+      apiRequestsPerDay: null,
+      apiBurstRequestsPerMinute: null,
+      mcpCallsPerDay: null,
+      mcpBurstRequestsPerMinute: null,
+      dashboardAiCallsPerDay: null,
+    }),
+    maxDashboards: Number.MAX_SAFE_INTEGER,
+    prioritySupport: false,
+    exportFormats: Object.freeze(['csv', 'json', 'pdf']) as unknown as string[],
+    mcpAccess: true,
+    dataExport: true,
+    embedAccess: true,
+  }),
+  validUntil: Number.MAX_SAFE_INTEGER,
+}) as EntitlementState;
+
 // Module-level state
 let currentState: EntitlementState | null = null;
+
+/** The entitlement snapshot every predicate below answers from. */
+function resolveState(): EntitlementState | null {
+  return shouldUnlockAllFeatures(PRIVATE_WORKSPACE_ENABLED) ? PRIVATE_WORKSPACE_ENTITLEMENT : currentState;
+}
 const listeners = new Set<(state: EntitlementState | null) => void>();
 let verificationStatus: EntitlementVerificationStatus = 'idle';
 const verificationListeners = new Set<(status: EntitlementVerificationStatus) => void>();
@@ -270,22 +306,24 @@ export function onEntitlementVerificationChange(
 }
 
 export function getEntitlementVerificationStatus(): EntitlementVerificationStatus {
-  return verificationStatus;
+  // Nothing to verify in the private workspace: the answer is settled.
+  return shouldUnlockAllFeatures(PRIVATE_WORKSPACE_ENABLED) ? 'ready' : verificationStatus;
 }
 
 /**
  * Returns the current entitlement state, or null if not yet loaded.
  */
 export function getEntitlementState(): EntitlementState | null {
-  return currentState;
+  return resolveState();
 }
 
 /**
  * Check whether a specific feature flag is truthy in the current entitlement state.
  */
 export function hasFeature(flag: keyof EntitlementState['features']): boolean {
-  if (currentState === null) return false;
-  return Boolean(currentState.features[flag]);
+  const state = resolveState();
+  if (state === null) return false;
+  return Boolean(state.features[flag]);
 }
 
 /**
@@ -293,15 +331,16 @@ export function hasFeature(flag: keyof EntitlementState['features']): boolean {
  * Clerk's current PRO role must not wait for the Convex snapshot to hydrate.
  */
 export function hasEmbedAccessForAccount(role: 'free' | 'pro' | undefined): boolean {
-  return hasAccountEmbedAccess(role, currentState, Date.now());
+  return hasAccountEmbedAccess(role, resolveState(), Date.now());
 }
 
 /**
  * Check whether the user's tier meets or exceeds the given minimum.
  */
 export function hasTier(minTier: number): boolean {
-  if (currentState === null) return false;
-  return currentState.features.tier >= minTier;
+  const state = resolveState();
+  if (state === null) return false;
+  return state.features.tier >= minTier;
 }
 
 /**
@@ -325,7 +364,7 @@ export function isEntitlementActive(
  * Returns true if entitlement data exists, plan is not free, and hasn't expired.
  */
 export function isEntitled(): boolean {
-  return isEntitlementActive(currentState, Date.now());
+  return isEntitlementActive(resolveState(), Date.now());
 }
 
 /**

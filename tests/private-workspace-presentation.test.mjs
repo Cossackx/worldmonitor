@@ -47,3 +47,23 @@ test('the map layer-tray author badge is gated in both 2D and 3D renderers', () 
     assert.match(preceding, /shouldRenderHostedBranding\(PRIVATE_WORKSPACE_ENABLED\)/, `${file} badge is not gated`);
   }
 });
+
+test('private workspace unlocks every entitlement seam the app consults', () => {
+  for (const [file, marker] of [
+    ['src/services/entitlements.ts', 'PRIVATE_WORKSPACE_ENTITLEMENT'],
+    ['src/services/panel-gating.ts', 'shouldUnlockAllFeatures(PRIVATE_WORKSPACE_ENABLED)) return true'],
+    ['src/services/widget-store.ts', 'shouldUnlockAllFeatures(PRIVATE_WORKSPACE_ENABLED) ||'],
+  ]) {
+    const source = readFileSync(resolve(root, file), 'utf8');
+    assert.ok(source.includes(marker), `${file} does not honour the private-workspace unlock (${marker})`);
+  }
+  const entitlements = readFileSync(resolve(root, 'src/services/entitlements.ts'), 'utf8');
+  // Every predicate must read through resolveState(), never currentState directly.
+  for (const fn of ['getEntitlementState', 'hasFeature', 'hasEmbedAccessForAccount', 'hasTier', 'isEntitled']) {
+    const start = entitlements.indexOf(`export function ${fn}(`);
+    assert.ok(start > 0, fn);
+    const body = entitlements.slice(start, entitlements.indexOf('\n}', start));
+    assert.match(body, /resolveState\(\)/, `${fn} bypasses resolveState()`);
+    assert.doesNotMatch(body, /\bcurrentState\b/, `${fn} still reads currentState directly`);
+  }
+});

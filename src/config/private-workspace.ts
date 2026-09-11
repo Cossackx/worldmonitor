@@ -39,6 +39,18 @@ export function shouldRenderHostedBranding(privateWorkspaceEnabled: boolean): bo
   return shouldRenderHostedMarketing(privateWorkspaceEnabled);
 }
 
+/**
+ * The private workspace is a personal build with no plans: every layer, panel
+ * and export the hosted product sells as "Pro" is unlocked, and no lock icon,
+ * PRO badge, upgrade prompt or activation flow is shown. This is a client
+ * presentation/entitlement decision only; hosted endpoints that require
+ * provider credentials or an LLM still answer as they do today, and a denial
+ * from them renders as unavailable, never as an upsell.
+ */
+export function shouldUnlockAllFeatures(privateWorkspaceEnabled: boolean): boolean {
+  return privateWorkspaceEnabled;
+}
+
 /** Signed-in users retain their account control; signed-out hosted CTAs do not. */
 export function shouldRenderHostedAuthCtas(
   privateWorkspaceEnabled: boolean,

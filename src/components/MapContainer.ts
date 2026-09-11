@@ -390,7 +390,9 @@ export class MapContainer {
     this.container.removeAttribute('aria-busy');
     this.container.textContent = '';
     this.container.classList.add(modeClass);
-    if (this.useCesiumSpike) {
+    // The 3D prototype banner belongs to the Cesium pane only; the 2D
+    // renderers must not inherit it.
+    if (this.useCesiumSpike && modeClass === 'globe-mode') {
       const banner = document.createElement('div');
       banner.className = 'cesium-spike-limitations-banner';
       banner.setAttribute('role', 'note');

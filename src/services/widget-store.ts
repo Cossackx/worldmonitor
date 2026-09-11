@@ -1,4 +1,5 @@
 import { loadFromStorage, saveToStorage } from '@/utils';
+import { PRIVATE_WORKSPACE_ENABLED, shouldUnlockAllFeatures } from '@/config/private-workspace';
 import { safeStorageGet } from '@/utils/safe-storage';
 import { clearPanelColSpanEntry, clearPanelSpanEntry } from '@/utils/panel-storage';
 import { getAuthState } from '@/services/auth-state';
@@ -236,6 +237,7 @@ export function isProWidgetEnabled(): boolean {
 
 export function isProUser(): boolean {
   return (
+    shouldUnlockAllFeatures(PRIVATE_WORKSPACE_ENABLED) ||
     isWidgetFeatureEnabled() ||
     isProWidgetEnabled() ||
     getAuthState().user?.role === 'pro' ||

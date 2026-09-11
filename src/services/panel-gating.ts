@@ -13,6 +13,7 @@
  */
 
 import { WEB_APP_ORIGIN } from '@/config/web-origin';
+import { PRIVATE_WORKSPACE_ENABLED, shouldUnlockAllFeatures } from '@/config/private-workspace';
 import type { AuthSession } from './auth-state';
 import { getSubscription, openBillingPortal, prereserveBillingPortalTab } from './billing';
 import { deriveBillingUxState, getBillingGateOverride, getReactivationHref } from './billing-state';
@@ -53,6 +54,8 @@ export enum PanelGateReason {
  * signals that aren't already covered by isProUser.
  */
 export function hasPremiumAccess(authState?: AuthSession): boolean {
+  // Personal build: no plans, everything is open. See private-workspace.ts.
+  if (shouldUnlockAllFeatures(PRIVATE_WORKSPACE_ENABLED)) return true;
   if (getSecretState('WORLDMONITOR_API_KEY').present) return true;
   if (isProUser()) return true;
   if (authState?.user?.role === 'pro') return true;
