@@ -131,6 +131,11 @@ let latestStatus: SnapshotStatus = {
   vessels: 0,
   messages: 0,
 };
+let latestCandidateCount = 0;
+let latestCandidatesRequested = false;
+let latestFetchedAt = 0;
+let latestDataAvailable = false;
+
 
 // ---- Constants ----
 
@@ -147,10 +152,22 @@ function shouldIncludeCandidates(): boolean {
 
 interface ParsedSnapshot {
   sequence: number;
+  fetchedAt: number;
+  dataAvailable: boolean;
   status: SnapshotStatus;
   disruptions: AisDisruptionEvent[];
   density: AisDensityZone[];
   candidateReports: SnapshotCandidateReport[];
+}
+
+export interface AisSignals {
+  disruptions: AisDisruptionEvent[];
+  density: AisDensityZone[];
+  status: ReturnType<typeof getAisStatus>;
+  fetchedAt: number;
+  dataAvailable: boolean;
+  candidateCount: number;
+  candidatesRequested: boolean;
 }
 
 async function fetchSnapshotPayload(includeCandidates: boolean, signal?: AbortSignal): Promise<ParsedSnapshot | null> {
@@ -167,6 +184,8 @@ async function fetchSnapshotPayload(includeCandidates: boolean, signal?: AbortSi
 
   return {
     sequence: snapshot.sequence,
+    fetchedAt: response.fetchedAt,
+    dataAvailable: response.dataAvailable,
     status: {
       connected: snapshot.status?.connected ?? false,
       vessels: snapshot.status?.vessels ?? 0,
@@ -259,6 +278,10 @@ async function pollSnapshot(force = false, signal?: AbortSignal): Promise<void> 
     latestDisruptions = snapshot.disruptions;
     latestDensity = snapshot.density;
     latestStatus = snapshot.status;
+    latestCandidateCount = snapshot.candidateReports.length;
+    latestCandidatesRequested = includeCandidates;
+    latestFetchedAt = snapshot.fetchedAt;
+    latestDataAvailable = snapshot.dataAvailable;
     lastPollAt = Date.now();
 
     if (includeCandidates) {
@@ -333,9 +356,17 @@ export function getAisStatus(): { connected: boolean; vessels: number; messages:
   };
 }
 
-export async function fetchAisSignals(): Promise<{ disruptions: AisDisruptionEvent[]; density: AisDensityZone[] }> {
+export async function fetchAisSignals(): Promise<AisSignals> {
   if (!aisConfigured) {
-    return { disruptions: [], density: [] };
+    return {
+      disruptions: [],
+      density: [],
+      status: getAisStatus(),
+      fetchedAt: 0,
+      dataAvailable: false,
+      candidateCount: 0,
+      candidatesRequested: false,
+    };
   }
 
   startPolling();
@@ -347,5 +378,10 @@ export async function fetchAisSignals(): Promise<{ disruptions: AisDisruptionEve
   return {
     disruptions: latestDisruptions,
     density: latestDensity,
+    status: getAisStatus(),
+    fetchedAt: latestFetchedAt,
+    dataAvailable: latestDataAvailable,
+    candidateCount: latestCandidateCount,
+    candidatesRequested: latestCandidatesRequested,
   };
 }

@@ -3491,10 +3491,23 @@ export class DataLoaderManager implements AppModule {
         if (militaryVessels.isMilitaryVesselTrackingConfigured()) {
           militaryVessels.initMilitaryVesselStream();
         }
-        const [flightData, vesselData] = await Promise.all([
+        const [flightResult, vesselResult] = await Promise.allSettled([
           fetchMilitaryFlights(),
           militaryVessels.fetchMilitaryVessels(),
         ]);
+        const flightData = flightResult.status === 'fulfilled'
+          ? flightResult.value
+          : { flights: [], clusters: [] };
+        const vesselData = vesselResult.status === 'fulfilled'
+          ? vesselResult.value
+          : { vessels: [], clusters: [] };
+        if (flightResult.status === 'rejected') {
+          console.warn('[Intelligence] OpenSky military flights unavailable; retaining AIS result:', flightResult.reason);
+          dataFreshness.recordError('opensky', String(flightResult.reason));
+        }
+        if (vesselResult.status === 'rejected' && !isVesselRuntimeStoppedError(vesselResult.reason)) {
+          console.warn('[Intelligence] AIS military-vessel enrichment unavailable:', vesselResult.reason);
+        }
         this.ctx.intelligenceCache.military = {
           flights: flightData.flights,
           flightClusters: flightData.clusters,
@@ -3793,9 +3806,11 @@ export class DataLoaderManager implements AppModule {
 
   async loadAisSignals(): Promise<void> {
     try {
-      const { disruptions, density } = await fetchAisSignals();
-      const aisStatus = getAisStatus();
+      const aisData = await fetchAisSignals();
+      const { disruptions, density } = aisData;
+      const aisStatus = aisData.status;
       console.log('[Ships] Events:', { disruptions: disruptions.length, density: density.length, vessels: aisStatus.vessels });
+      this.callPanel('strategic-posture', 'updateAisAvailability', aisData);
       this.ctx.map?.setAisData(disruptions, density);
       this.ctx.intelligenceCache.aisDisruptions = disruptions;
       await runSignalAggregator(this.ctx.statusPanel, 'AIS disruptions', (aggregator) => aggregator.ingestAisDisruptions(disruptions));
@@ -4020,10 +4035,23 @@ export class DataLoaderManager implements AppModule {
       if (militaryVessels.isMilitaryVesselTrackingConfigured()) {
         militaryVessels.initMilitaryVesselStream();
       }
-      const [flightData, vesselData] = await Promise.all([
+      const [flightResult, vesselResult] = await Promise.allSettled([
         fetchMilitaryFlights(),
         militaryVessels.fetchMilitaryVessels(),
       ]);
+      const flightData = flightResult.status === 'fulfilled'
+        ? flightResult.value
+        : { flights: [], clusters: [] };
+      const vesselData = vesselResult.status === 'fulfilled'
+        ? vesselResult.value
+        : { vessels: [], clusters: [] };
+      if (flightResult.status === 'rejected') {
+        console.warn('[Intelligence] OpenSky military flights unavailable; retaining AIS result:', flightResult.reason);
+        dataFreshness.recordError('opensky', String(flightResult.reason));
+      }
+      if (vesselResult.status === 'rejected' && !isVesselRuntimeStoppedError(vesselResult.reason)) {
+        console.warn('[Intelligence] AIS military-vessel enrichment unavailable:', vesselResult.reason);
+      }
       this.ctx.intelligenceCache.military = {
         flights: flightData.flights,
         flightClusters: flightData.clusters,

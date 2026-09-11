@@ -84,6 +84,148 @@ function filterFlightsToBounds(
 // follow next_cursor (see src/services/military-flights.ts:fetchViaProto).
 const DEFAULT_PAGE_SIZE = 100;
 const MAX_PAGE_SIZE = 100;
+const LOCAL_OPENSKY_URL = 'https://opensky-network.org/api/states/all';
+
+/**
+ * Local private preview recovery. The preview launcher intentionally starts the
+ * AIS relay only; it does not run the Railway military-flight seeder. When the
+ * local relay is unavailable or unauthorized, use the existing free OpenSky
+ * path instead of silently returning an empty aircraft layer. This is strictly
+ * opt-in to the private preview env and never broadens hosted API behavior.
+ */
+async function fetchLocalOpenSkyFallback(
+  fetchBB: { lamin: number; lamax: number; lomin: number; lomax: number },
+): Promise<ListMilitaryFlightsResponse | null> {
+  if (process.env.VITE_PRIVATE_WORKSPACE !== '1') return null;
+  const params = new URLSearchParams({
+    lamin: String(fetchBB.lamin),
+    lamax: String(fetchBB.lamax),
+    lomin: String(fetchBB.lomin),
+    lomax: String(fetchBB.lomax),
+  });
+  const response = await fetch(`${LOCAL_OPENSKY_URL}?${params}`, {
+    headers: { Accept: 'application/json', 'User-Agent': 'WorldMonitor-local-preview/1.0' },
+    signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+  });
+  if (!response.ok) return null;
+  const data = (await response.json()) as { states?: Array<[string, string, ...unknown[]]> };
+  if (!Array.isArray(data.states)) return null;
+  const flights: ListMilitaryFlightsResponse['flights'] = [];
+  for (const state of data.states) {
+    const [icao24, callsign, , , , lon, lat, altitude, onGround, velocity, heading, verticalRate] = state as [
+      string, string, unknown, unknown, unknown, number | null, number | null, number | null, boolean,
+      number | null, number | null, number | null,
+    ];
+    if (lat == null || lon == null || onGround) continue;
+    if (!isMilitaryCallsign(callsign) && !isMilitaryHex(icao24)) continue;
+    const hex = icao24.toUpperCase();
+    const aircraftType = detectAircraftType(callsign);
+    flights.push({
+      id: hex,
+      callsign: (callsign || '').trim(),
+      hexCode: hex,
+      registration: '',
+      aircraftType: (AIRCRAFT_TYPE_MAP[aircraftType] || 'MILITARY_AIRCRAFT_TYPE_UNKNOWN') as MilitaryAircraftType,
+      aircraftModel: '',
+      operator: 'MILITARY_OPERATOR_OTHER' as MilitaryOperator,
+      operatorCountry: '',
+      location: { latitude: lat, longitude: lon },
+      altitude: altitude != null ? Math.round(altitude * 3.28084) : 0,
+      heading: heading ?? 0,
+      speed: velocity != null ? Math.round(velocity * 1.94384) : 0,
+      verticalRate: verticalRate != null ? Math.round(verticalRate * 196.85) : 0,
+      onGround: false,
+      squawk: '',
+      origin: '',
+      destination: '',
+      lastSeenAt: Date.now(),
+      firstSeenAt: 0,
+      confidence: 'MILITARY_CONFIDENCE_LOW',
+      isInteresting: false,
+      note: '',
+      enrichment: undefined,
+      source: 'opensky',
+    });
+  }
+  return flights.length > 0 ? { flights, clusters: [], pagination: undefined } : null;
+}
+
+const LOCAL_ADSB_LOL_MIL_URL = 'https://api.adsb.lol/v2/mil';
+
+interface AdsbLolAircraft {
+  hex?: string;
+  flight?: string;
+  r?: string;
+  t?: string;
+  lat?: number;
+  lon?: number;
+  alt_baro?: number | 'ground';
+  gs?: number;
+  track?: number;
+  baro_rate?: number;
+  squawk?: string;
+}
+
+/**
+ * Local private preview: keyless ADS-B military set from adsb.lol (ODbL).
+ * Hosted World Monitor only reaches adsb.lol through the Railway seeder and
+ * Redis; neither exists on a workstation, so without this the local aircraft
+ * layer depends entirely on anonymous OpenSky (400 requests/day). adsb.lol's
+ * /v2/mil is the same source God's Eye uses for its military layer. Strictly
+ * private-preview only; hosted behaviour is unchanged.
+ */
+async function fetchLocalAdsbLolMil(
+  fetchBB: { lamin: number; lamax: number; lomin: number; lomax: number },
+): Promise<ListMilitaryFlightsResponse | null> {
+  if (process.env.VITE_PRIVATE_WORKSPACE !== '1') return null;
+  const response = await fetch(LOCAL_ADSB_LOL_MIL_URL, {
+    headers: { Accept: 'application/json', 'User-Agent': 'WorldMonitor-local-preview/1.0' },
+    signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+  });
+  if (!response.ok) return null;
+  const data = (await response.json()) as { ac?: AdsbLolAircraft[] };
+  if (!Array.isArray(data.ac)) return null;
+  const flights: ListMilitaryFlightsResponse['flights'] = [];
+  const seen = new Set<string>();
+  for (const a of data.ac) {
+    const lat = a.lat; const lon = a.lon;
+    if (typeof lat !== 'number' || typeof lon !== 'number') continue;
+    if (a.alt_baro === 'ground') continue;
+    if (lat < fetchBB.lamin || lat > fetchBB.lamax || lon < fetchBB.lomin || lon > fetchBB.lomax) continue;
+    const hex = (a.hex ?? '').trim().replace(/~/g, '').toUpperCase();
+    if (!hex || seen.has(hex)) continue;
+    seen.add(hex);
+    const callsign = (a.flight ?? '').trim();
+    const aircraftType = detectAircraftType(callsign);
+    flights.push({
+      id: hex,
+      callsign,
+      hexCode: hex,
+      registration: a.r ?? '',
+      aircraftType: (AIRCRAFT_TYPE_MAP[aircraftType] || 'MILITARY_AIRCRAFT_TYPE_UNKNOWN') as MilitaryAircraftType,
+      aircraftModel: a.t ?? '',
+      operator: 'MILITARY_OPERATOR_OTHER' as MilitaryOperator,
+      operatorCountry: '',
+      location: { latitude: lat, longitude: lon },
+      altitude: typeof a.alt_baro === 'number' ? Math.round(a.alt_baro) : 0,
+      heading: a.track ?? 0,
+      speed: a.gs != null ? Math.round(a.gs) : 0,
+      verticalRate: a.baro_rate != null ? Math.round(a.baro_rate) : 0,
+      onGround: false,
+      squawk: a.squawk ?? '',
+      origin: '',
+      destination: '',
+      lastSeenAt: Date.now(),
+      firstSeenAt: 0,
+      confidence: 'MILITARY_CONFIDENCE_LOW',
+      isInteresting: false,
+      note: '',
+      enrichment: undefined,
+      source: 'adsb.lol',
+    });
+  }
+  return flights.length > 0 ? { flights, clusters: [], pagination: undefined } : null;
+}
 
 function resolvePageSize(pageSize: number | undefined): number {
   if (typeof pageSize !== 'number' || !Number.isInteger(pageSize) || pageSize <= 0) {
@@ -577,62 +719,72 @@ export async function listMilitaryFlights(
         params.set('lomax', String(fetchBB.lomax));
 
         const url = `${baseUrl!}${params.toString() ? '?' + params.toString() : ''}`;
-        const resp = await fetch(url, {
-          headers: getRelayHeaders(),
-          signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
-        });
-
-        if (!resp.ok) return null;
-
-        const data = (await resp.json()) as { states?: Array<[string, string, ...unknown[]]> };
-        if (!data.states) return null;
-
-        const flights: ListMilitaryFlightsResponse['flights'] = [];
-        for (const state of data.states) {
-          const [icao24, callsign, , , , lon, lat, altitude, onGround, velocity, heading, verticalRate] = state as [
-            string, string, unknown, unknown, unknown, number | null, number | null, number | null, boolean,
-            number | null, number | null, number | null,
-          ];
-          if (lat == null || lon == null || onGround) continue;
-          if (!isMilitaryCallsign(callsign) && !isMilitaryHex(icao24)) continue;
-
-          const aircraftType = detectAircraftType(callsign);
-          // Canonicalize hex_code to uppercase — the seed cron
-          // (scripts/seed-military-flights.mjs) writes uppercase, and
-          // src/services/military-flights.ts getFlightByHex uppercases the
-          // lookup input. Preserving OpenSky's lowercase here would break
-          // every hex lookup silently.
-          const hex = icao24.toUpperCase();
-
-          flights.push({
-            id: hex,
-            callsign: (callsign || '').trim(),
-            hexCode: hex,
-            registration: '',
-            aircraftType: (AIRCRAFT_TYPE_MAP[aircraftType] || 'MILITARY_AIRCRAFT_TYPE_UNKNOWN') as MilitaryAircraftType,
-            aircraftModel: '',
-            operator: 'MILITARY_OPERATOR_OTHER',
-            operatorCountry: '',
-            location: { latitude: lat, longitude: lon },
-            altitude: altitude != null ? Math.round(altitude * 3.28084) : 0,
-            heading: heading ?? 0,
-            speed: velocity != null ? Math.round(velocity * 1.94384) : 0,
-            verticalRate: verticalRate != null ? Math.round(verticalRate * 196.85) : 0,
-            onGround: false,
-            squawk: '',
-            origin: '',
-            destination: '',
-            lastSeenAt: Date.now(),
-            firstSeenAt: 0,
-            confidence: 'MILITARY_CONFIDENCE_LOW',
-            isInteresting: false,
-            note: '',
-            enrichment: undefined,
-            source: 'opensky',
+        const fetchUpstream = async (): Promise<ListMilitaryFlightsResponse | null> => {
+          const resp = await fetch(url, {
+            headers: getRelayHeaders(),
+            signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
           });
-        }
+          if (!resp.ok) return null;
+          const data = (await resp.json()) as { states?: Array<[string, string, ...unknown[]]> };
+          if (!data.states) return null;
 
-        return flights.length > 0 ? { flights, clusters: [], pagination: undefined } : null;
+          const flights: ListMilitaryFlightsResponse['flights'] = [];
+          for (const state of data.states) {
+            const [icao24, callsign, , , , lon, lat, altitude, onGround, velocity, heading, verticalRate] = state as [
+              string, string, unknown, unknown, unknown, number | null, number | null, number | null, boolean,
+              number | null, number | null, number | null,
+            ];
+            if (lat == null || lon == null || onGround) continue;
+            if (!isMilitaryCallsign(callsign) && !isMilitaryHex(icao24)) continue;
+            const aircraftType = detectAircraftType(callsign);
+            const hex = icao24.toUpperCase();
+            flights.push({
+              id: hex,
+              callsign: (callsign || '').trim(),
+              hexCode: hex,
+              registration: '',
+              aircraftType: (AIRCRAFT_TYPE_MAP[aircraftType] || 'MILITARY_AIRCRAFT_TYPE_UNKNOWN') as MilitaryAircraftType,
+              aircraftModel: '',
+              operator: 'MILITARY_OPERATOR_OTHER',
+              operatorCountry: '',
+              location: { latitude: lat, longitude: lon },
+              altitude: altitude != null ? Math.round(altitude * 3.28084) : 0,
+              heading: heading ?? 0,
+              speed: velocity != null ? Math.round(velocity * 1.94384) : 0,
+              verticalRate: verticalRate != null ? Math.round(verticalRate * 196.85) : 0,
+              onGround: false,
+              squawk: '',
+              origin: '',
+              destination: '',
+              lastSeenAt: Date.now(),
+              firstSeenAt: 0,
+              confidence: 'MILITARY_CONFIDENCE_LOW',
+              isInteresting: false,
+              note: '',
+              enrichment: undefined,
+              source: 'opensky',
+            });
+          }
+          return flights.length > 0 ? { flights, clusters: [], pagination: undefined } : null;
+        };
+
+        // Private preview: the keyless ADS-B military set comes first (global
+        // coverage, no daily quota), then the relay's OpenSky route, then the
+        // direct anonymous OpenSky fallback.
+        try {
+          const adsbResult = await fetchLocalAdsbLolMil(fetchBB);
+          if (adsbResult) return adsbResult;
+        } catch { /* fall through to OpenSky paths */ }
+        try {
+          const relayResult = await fetchUpstream();
+          if (relayResult) return relayResult;
+          const localResult = await fetchLocalOpenSkyFallback(fetchBB);
+          if (localResult) return localResult;
+        } catch {
+          const localResult = await fetchLocalOpenSkyFallback(fetchBB);
+          if (localResult) return localResult;
+        }
+        return null;
       },
     );
 

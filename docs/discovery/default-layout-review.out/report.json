@@ -1,0 +1,98 @@
+{
+  "startedAt": "2026-09-11T19:00:20.909Z",
+  "steps": [
+    {
+      "name": "default-2d",
+      "url": "http://127.0.0.1:4200/?lat=20.0000&lon=0.0000&zoom=1.00&view=global&timeRange=7d&layers=conflicts%2Cbases%2Chotspots%2Cnuclear%2Csanctions%2Cweather%2CcanadaAlerts%2Ceconomic%2Cwaterways%2Coutages%2Cmilitary%2Cnatural&cesiumSpike=1",
+      "mode": "map-container deckgl-mode",
+      "layersOn": [
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        ""
+      ]
+    },
+    {
+      "name": "default-3d-settle",
+      "tilesLoaded": true,
+      "renders": 41
+    },
+    {
+      "name": "default-3d",
+      "layersOn": [
+        "conflicts",
+        "bases",
+        "hotspots",
+        "nuclear",
+        "sanctions",
+        "weather",
+        "canadaAlerts",
+        "economic",
+        "waterways",
+        "outages",
+        "military",
+        "natural"
+      ],
+      "rendered": [
+        "conflicts",
+        "bases",
+        "hotspots",
+        "nuclear",
+        "economic",
+        "waterways",
+        "military"
+      ],
+      "notRendered": [
+        "sanctions",
+        "weather",
+        "canadaAlerts",
+        "outages",
+        "natural"
+      ],
+      "markerLoad": {
+        "rendered": 800,
+        "truncated": {
+          "military": {
+            "shown": 355,
+            "total": 769
+          },
+          "nuclear": {
+            "shown": 176,
+            "total": 250
+          },
+          "bases": {
+            "shown": 176,
+            "total": 226
+          }
+        },
+        "paused": false
+      },
+      "basemap": {
+        "status": "ready",
+        "source": "esri-imagery",
+        "error": null,
+        "notice": null
+      },
+      "terrain": {
+        "status": "ready",
+        "error": null
+      }
+    },
+    {
+      "name": "regional-3d-settle",
+      "tilesLoaded": true,
+      "renders": 49
+    }
+  ],
+  "pass": true,
+  "pageErrors": [],
+  "finishedAt": "2026-09-11T19:00:44.475Z"
+}

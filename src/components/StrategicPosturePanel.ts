@@ -8,6 +8,8 @@ import { t } from '../services/i18n';
 import type { NewsItem, DeductContextDetail } from '@/types';
 import { buildNewsContext } from '@/utils/news-context';
 import { bindActivationKeys } from '@/utils/activation';
+import type { AisSignals } from '@/services/maritime';
+import { getAisCandidateSummary, getStrategicSourceStatus, STRATEGIC_SOURCE_STATUS_LABELS, type StrategicSourceStatus } from './strategic-posture-status';
 
 export class StrategicPosturePanel extends Panel {
   private postures: TheaterPostureSummary[] = [];
@@ -17,6 +19,10 @@ export class StrategicPosturePanel extends Panel {
   private onLocationClick?: (lat: number, lon: number) => void;
   private lastTimestamp: string = '';
   private isStale: boolean = false;
+  private aisAvailability: AisSignals | null = null;
+  private aircraftStatus: StrategicSourceStatus = 'initial';
+  private aircraftTimestamp = '';
+  private aircraftCount = 0;
 
   constructor(private getLatestNews?: () => NewsItem[]) {
     super({
@@ -82,6 +88,8 @@ export class StrategicPosturePanel extends Panel {
           <div class="posture-loading-tip">${t('components.strategicPosture.connectingStreams')}</div>
           <div class="posture-loading-elapsed">${t('components.strategicPosture.elapsed', { elapsed: '0' })}</div>
           <div class="posture-loading-note">${t('components.strategicPosture.initialLoadNote')}</div>
+          ${this.renderAircraftAvailability()}
+          ${this.renderAisAvailability()}
         </div>
       </div>
     `, 'legacy Panel.setContent() migration'));
@@ -144,6 +152,9 @@ export class StrategicPosturePanel extends Panel {
       const data = await fetchCachedTheaterPosture(this.signal);
       if (!this.element?.isConnected) return;
       if (!data || !data.postures?.length) {
+        this.aircraftStatus = data?.timestamp ? 'empty' : 'unavailable';
+        this.aircraftTimestamp = data?.timestamp ?? '';
+        this.aircraftCount = data?.totalFlights ?? 0;
         this.showNoData();
         return;
       }
@@ -155,6 +166,9 @@ export class StrategicPosturePanel extends Panel {
       }));
       this.lastTimestamp = data.timestamp;
       this.isStale = data.stale || false;
+      this.aircraftTimestamp = data.timestamp;
+      this.aircraftCount = data.totalFlights;
+      this.aircraftStatus = getStrategicSourceStatus({ available: true, connected: true, hasSnapshot: true, count: data.totalFlights, stale: this.isStale });
 
       // Try to augment with vessel data (client-side)
       this.showLoadingStage('vessels');
@@ -174,6 +188,7 @@ export class StrategicPosturePanel extends Panel {
     } catch (error) {
       if (this.isAbortError(error)) return;
       console.error('[StrategicPosturePanel] Fetch error:', error);
+      this.aircraftStatus = 'unavailable';
       this.showFetchError();
     }
   }
@@ -287,6 +302,9 @@ export class StrategicPosturePanel extends Panel {
 
   public updatePostures(data: CachedTheaterPosture): void {
     if (!data || !data.postures?.length) {
+      this.aircraftStatus = data?.timestamp ? 'empty' : 'unavailable';
+      this.aircraftTimestamp = data?.timestamp ?? '';
+      this.aircraftCount = data?.totalFlights ?? 0;
       this.showNoData();
       return;
     }
@@ -297,6 +315,9 @@ export class StrategicPosturePanel extends Panel {
     }));
     this.lastTimestamp = data.timestamp;
     this.isStale = data.stale || false;
+    this.aircraftTimestamp = data.timestamp;
+    this.aircraftCount = data.totalFlights;
+    this.aircraftStatus = getStrategicSourceStatus({ available: true, connected: true, hasSnapshot: true, count: data.totalFlights, stale: this.isStale });
     this.augmentWithVessels().then(() => {
       if (!this.element?.isConnected) return;
       this.updateBadges();
@@ -320,26 +341,63 @@ export class StrategicPosturePanel extends Panel {
     return this.fetchAndRender();
   }
 
+  public updateAisAvailability(data: AisSignals): void {
+    this.aisAvailability = data;
+    // AIS is independent: also repaint when it becomes unavailable.
+    if (this.postures.length === 0) this.showNoData();
+    else this.render();
+  }
+
+  private renderAisAvailability(): string {
+    const data = this.aisAvailability;
+    const status = getStrategicSourceStatus(data ? {
+      available: data.dataAvailable,
+      connected: data.status.connected,
+      hasSnapshot: true,
+      count: data.status.vessels + data.density.length,
+      fetchedAt: data.fetchedAt,
+      now: Date.now(),
+      staleAfterMs: 15 * 60 * 1000,
+    } : {});
+    const when = data?.fetchedAt && data.fetchedAt > 0 ? new Date(data.fetchedAt).toLocaleTimeString() : '—';
+    const vessels = data?.status.vessels ?? 0;
+    const densityZones = data?.density.length ?? 0;
+    const candidateSummary = getAisCandidateSummary(data?.candidateCount ?? 0, data?.candidatesRequested ?? false);
+    return `<div class="posture-ais-status" data-ais-source="AISStream">
+      <strong>Maritime AIS</strong>: ${STRATEGIC_SOURCE_STATUS_LABELS[status]}; snapshot ${when}; ${vessels} vessel reports; ${densityZones} traffic-density zones; ${candidateSummary}.
+      <span class="posture-ais-note">Density zones are not individual ship markers.</span>
+    </div>`;
+  }
+
+  private renderAircraftAvailability(): string {
+    const when = this.aircraftTimestamp ? new Date(this.aircraftTimestamp).toLocaleTimeString() : '—';
+    return `<div class="posture-adsb-status" data-adsb-source="OpenSky">
+      <strong>Aviation ADS-B posture</strong>: ${STRATEGIC_SOURCE_STATUS_LABELS[this.aircraftStatus]}; snapshot ${when}; ${this.aircraftStatus === 'unavailable' || this.aircraftStatus === 'initial' ? 'aircraft count unknown' : `${this.aircraftCount} aircraft in posture coverage`}.
+    </div>`;
+  }
+
   private showNoData(): void {
     this.stopLoadingTimer();
     this.setSafeContent(unsafeRawHtml(`
       <div class="posture-panel">
         <div class="posture-no-data">
           <div class="posture-no-data-icon pulse">📡</div>
-          <div class="posture-no-data-title">${t('components.strategicPosture.acquiringData')}</div>
+          <div class="posture-no-data-title">No current posture snapshot</div>
           <div class="posture-no-data-desc">
-            ${t('components.strategicPosture.acquiringDesc')}
+            No current strategic-posture result is available. This does not establish that aircraft tracking or maritime AIS is offline; their data paths are independent.
           </div>
           <div class="posture-data-sources">
             <div class="posture-source">
-              <span class="posture-source-icon connecting">✈️</span>
-              <span>${t('components.strategicPosture.openSkyAdsb')}</span>
+              <span class="posture-source-icon ${this.aircraftStatus === 'connected' ? 'ready' : 'warning'}">✈️</span>
+              <span>${t('components.strategicPosture.openSkyAdsb')} posture summary · ${STRATEGIC_SOURCE_STATUS_LABELS[this.aircraftStatus]}</span>
             </div>
             <div class="posture-source">
-              <span class="posture-source-icon waiting">🚢</span>
-              <span>${t('components.strategicPosture.aisVesselStream')}</span>
+              <span class="posture-source-icon ${this.aisAvailability?.dataAvailable ? 'ready' : 'waiting'}">🚢</span>
+              <span>${t('components.strategicPosture.aisVesselStream')} · ${STRATEGIC_SOURCE_STATUS_LABELS[getStrategicSourceStatus(this.aisAvailability ? { available: this.aisAvailability.dataAvailable, connected: this.aisAvailability.status.connected, hasSnapshot: true, count: this.aisAvailability.status.vessels + this.aisAvailability.density.length } : {})]}</span>
             </div>
           </div>
+          ${this.renderAircraftAvailability()}
+          ${this.renderAisAvailability()}
           <button class="posture-retry-btn" data-panel-retry>↻ ${t('components.strategicPosture.retryNow')}</button>
         </div>
       </div>
@@ -353,13 +411,15 @@ export class StrategicPosturePanel extends Panel {
       <div class="posture-panel">
         <div class="posture-no-data">
           <div class="posture-no-data-icon">⚠️</div>
-          <div class="posture-no-data-title">${t('components.strategicPosture.feedRateLimited')}</div>
+          <div class="posture-no-data-title">Posture source unavailable</div>
           <div class="posture-no-data-desc">
-            ${t('components.strategicPosture.rateLimitedDesc')}
+            Aircraft posture data could not be loaded. Maritime AIS status is shown independently below when available.
           </div>
           <div class="posture-error-hint">
-            <strong>${t('components.strategicPosture.rateLimitedTip')}</strong>
+            <strong>Retry to request a new snapshot.</strong>
           </div>
+          ${this.renderAircraftAvailability()}
+          ${this.renderAisAvailability()}
           <button class="posture-retry-btn" data-panel-retry>↻ ${t('components.strategicPosture.tryAgain')}</button>
         </div>
       </div>
@@ -508,6 +568,8 @@ export class StrategicPosturePanel extends Panel {
         ${sorted.map((p) => this.renderTheater(p)).join('')}
 
         <div class="posture-footer">
+          ${this.renderAircraftAvailability()}
+          ${this.renderAisAvailability()}
           <span class="posture-updated">${this.isStale ? '⚠️ ' : ''}${t('components.strategicPosture.updated')} ${updatedTime}</span>
           <button class="posture-refresh-btn" title="${t('components.strategicPosture.refresh')}" aria-label="${t('components.strategicPosture.refresh')}">↻</button>
         </div>
