@@ -77,6 +77,9 @@ function fakeCesium(options: { esriFails?: boolean; terrainFails?: boolean } = {
     VerticalOrigin: { BOTTOM: 'bottom', CENTER: 'center' },
     HorizontalOrigin: { CENTER: 'center' },
     LabelStyle: { FILL_AND_OUTLINE: 'fill-outline' },
+    DistanceDisplayCondition: class { constructor(public near: number, public far: number) {} },
+    Cartesian2: class { constructor(public x: number, public y: number) {} },
+    CreditDisplay: { cesiumCredit: 'ion-logo' as unknown },
     HeightReference: { CLAMP_TO_GROUND: 'clamp', NONE: 'none' },
     EllipsoidTerrainProvider: class {},
     OpenStreetMapImageryProvider: class {
@@ -683,6 +686,119 @@ describe('CesiumMapAdapter spike', () => {
       expect(adapter.getLayerStatus('sanctions' as keyof MapLayers)).toBe('unsupported');
       expect(adapter.getLayerStatus('dayNight' as keyof MapLayers)).toBe('unsupported');
       expect(CESIUM_SPIKE_LIMITATIONS.renderedLayers).not.toContain('sanctions');
+    });
+  });
+
+  describe('map chrome and readability (2026-09-11 default-layout review)', () => {
+    const countries = {
+      type: 'FeatureCollection',
+      features: [
+        { type: 'Feature', properties: { 'ISO3166-1-Alpha-2': 'IR' }, geometry: { type: 'Polygon', coordinates: [[[44, 25], [63, 25], [63, 40], [44, 40], [44, 25]]] } },
+        { type: 'Feature', properties: { 'ISO3166-1-Alpha-2': 'XX' }, geometry: { type: 'MultiPolygon', coordinates: [[[[0, 0], [1, 0], [1, 1], [0, 0]]], [[[5, 5], [6, 5], [6, 6], [5, 5]]]] } },
+      ],
+    } as any;
+    const leftClickOf = (fake: ReturnType<typeof fakeCesium>) => fake.handler.setInputAction.mock.calls.find(([, type]) => type === 'left')?.[0] as ((movement: { position: { x: number; y: number } }) => void);
+
+    function build(fake: ReturnType<typeof fakeCesium>, overrides: Partial<ConstructorParameters<typeof CesiumMapAdapter>[2]> = {}, layers: Partial<MapLayers> = {}) {
+      const container = document.createElement('div');
+      document.body.appendChild(container);
+      const adapter = new CesiumMapAdapter(container, { ...state(), layers: { ...state().layers, ...layers } as MapLayers }, {
+        chrome: true, onInitError: vi.fn(), cesium: fake.dependency, createViewer: () => fake.viewer, loadCountries: async () => countries, ...overrides,
+      });
+      return { adapter, container };
+    }
+
+    it('drops the Cesium ion logo credit because no ion asset is ever requested', async () => {
+      const fake = fakeCesium();
+      const { adapter } = build(fake);
+      await adapter.whenReady();
+      expect(fake.dependency.CreditDisplay?.cesiumCredit).toBeUndefined();
+    });
+
+    it('gates regional conflict labels to regional camera range and centres them on the zone', async () => {
+      const fake = fakeCesium();
+      const { adapter } = build(fake, {}, { conflicts: true });
+      await adapter.whenReady();
+      await adapter.whenCountriesSettled();
+      const label = [...fake.entities.values()].find((e) => typeof e.id === 'string' && e.id.endsWith(':label')) as { label: Record<string, any> } | undefined;
+      expect(label?.label.horizontalOrigin).toBe('center');
+      expect(label?.label.distanceDisplayCondition).toMatchObject({ near: 0, far: 3_000_000 });
+    });
+
+    it('draws a tinted ring behind numeric cluster badges and leaves glyph markers ring-less', async () => {
+      const fake = fakeCesium();
+      const { adapter } = build(fake, {}, { military: true });
+      await adapter.whenReady();
+      adapter.setMilitaryVessels([], [{ id: 'c1', name: 'CSG', lat: 30, lon: 20, vesselCount: 21, activityType: 'deployment' } as any]);
+      const cluster = fake.entities.get('m:vesselClusters:c1') as Record<string, any>;
+      expect(cluster.label).toMatchObject({ text: '21', fillColor: 'css(#ff4444)' });
+      expect(cluster.point).toMatchObject({ pixelSize: 36, color: 'css(#ff44442e)', outlineColor: 'css(#ff4444cc)', outlineWidth: 2 });
+      adapter.setMilitaryFlights([{ id: 'f1', callsign: 'RCH123', lat: 50, lon: 10, aircraftType: 'transport' } as any]);
+      expect((fake.entities.get('m:flights:f1') as Record<string, any>).point).toBeUndefined();
+    });
+
+    it('outlines every country ring as a clamped border polyline and treats a border pick as a bare globe click', async () => {
+      const fake = fakeCesium();
+      const { adapter } = build(fake);
+      await adapter.whenReady();
+      await adapter.whenCountriesSettled();
+      const borders = adapter.getBorderEntityIds();
+      expect(borders).toHaveLength(3);
+      const first = fake.entities.get(borders[0]!) as { polyline: Record<string, any> };
+      expect(first.polyline).toMatchObject({ clampToGround: true, width: 1, material: 'css(#94a3b873)' });
+
+      const onCountry = vi.fn();
+      adapter.setOnCountryClick(onCountry);
+      fake.viewer.scene.pick = vi.fn(() => ({ id: { id: borders[0] } }));
+      leftClickOf(fake)({ position: { x: 1, y: 2 } });
+      expect(onCountry).toHaveBeenCalledTimes(1);
+    });
+
+    it('builds the in-pane chrome and routes user toggles, time range and zoom through the adapter', async () => {
+      const fake = fakeCesium();
+      const { adapter, container } = build(fake, {}, { conflicts: false, hotspots: true });
+      const onLayerChange = vi.fn();
+      const onTimeRange = vi.fn();
+      adapter.setOnLayerChange(onLayerChange);
+      adapter.onTimeRangeChanged(onTimeRange);
+      await adapter.whenReady();
+      await adapter.whenCountriesSettled();
+
+      for (const selector of ['.deckgl-layer-toggles', '.deckgl-time-slider', '.deckgl-controls .zoom-in', '.deckgl-legend', '.cesium-credit-dock']) {
+        expect(container.querySelector(selector), selector).not.toBeNull();
+      }
+
+      const conflicts = container.querySelector<HTMLInputElement>('.layer-toggle[data-layer="conflicts"] input')!;
+      expect(conflicts.checked).toBe(false);
+      conflicts.checked = true;
+      conflicts.dispatchEvent(new Event('change', { bubbles: true }));
+      expect(onLayerChange).toHaveBeenCalledWith('conflicts', true, 'user');
+      expect(adapter.getState().layers.conflicts).toBe(true);
+      expect(adapter.getConflictEntityIds().length).toBeGreaterThan(0);
+      expect(container.querySelector<HTMLElement>('.legend-item[data-layer="conflicts"]')?.style.display).toBe('');
+
+      // Programmatic changes mirror back into the picker and the legend.
+      adapter.setLayers({ ...adapter.getState().layers, conflicts: false });
+      expect(conflicts.checked).toBe(false);
+      expect(container.querySelector<HTMLElement>('.legend-item[data-layer="conflicts"]')?.style.display).toBe('none');
+
+      const sevenDays = container.querySelector<HTMLElement>('.time-btn[data-range="7d"]')!;
+      sevenDays.click();
+      expect(onTimeRange).toHaveBeenCalledWith('7d');
+      expect(sevenDays.classList.contains('active')).toBe(true);
+      expect(adapter.getTimeRange()).toBe('7d');
+
+      const zoomBefore = adapter.getState().zoom;
+      container.querySelector<HTMLElement>('.deckgl-controls .zoom-in')!.click();
+      expect(adapter.getState().zoom).toBeCloseTo(zoomBefore + 1);
+
+      adapter.hideLayerToggle('bases');
+      expect(container.querySelector('.layer-toggle-row[data-layer="bases"]')).toBeNull();
+      adapter.setLayerLoading('hotspots', true);
+      expect(container.querySelector('.layer-toggle[data-layer="hotspots"]')?.classList.contains('loading')).toBe(true);
+
+      adapter.destroy();
+      expect(container.querySelector('.deckgl-layer-toggles')).toBeNull();
     });
   });
 

@@ -1,29 +1,47 @@
 {
-  "startedAt": "2026-09-11T19:00:20.909Z",
+  "startedAt": "2026-09-11T23:24:54.910Z",
+  "colorScheme": "dark",
   "steps": [
     {
       "name": "default-2d",
       "url": "http://127.0.0.1:4200/?lat=20.0000&lon=0.0000&zoom=1.00&view=global&timeRange=7d&layers=conflicts%2Cbases%2Chotspots%2Cnuclear%2Csanctions%2Cweather%2CcanadaAlerts%2Ceconomic%2Cwaterways%2Coutages%2Cmilitary%2Cnatural&cesiumSpike=1",
       "mode": "map-container deckgl-mode",
+      "theme": "dark",
+      "authorBadge": false,
+      "hostedHandleInBody": false,
+      "bannerIn2d": false,
+      "feedsSettled": true,
       "layersOn": [
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        ""
+        "hotspots",
+        "conflicts",
+        "bases",
+        "nuclear",
+        "military",
+        "weather",
+        "canadaAlerts",
+        "outages",
+        "natural",
+        "waterways",
+        "economic",
+        "sanctions"
       ]
+    },
+    {
+      "name": "default-3d-chrome",
+      "layerPicker": true,
+      "timeRange": true,
+      "zoom": true,
+      "legend": true,
+      "creditDock": true,
+      "ionLogo": false,
+      "bannerText": "3D prototype · Esri World Imagery + Re:Earth terrain (keyless)"
     },
     {
       "name": "default-3d-settle",
       "tilesLoaded": true,
-      "renders": 41
+      "renders": 41,
+      "markersStable": true,
+      "rendered": 676
     },
     {
       "name": "default-3d",
@@ -58,21 +76,8 @@
         "natural"
       ],
       "markerLoad": {
-        "rendered": 800,
-        "truncated": {
-          "military": {
-            "shown": 355,
-            "total": 769
-          },
-          "nuclear": {
-            "shown": 176,
-            "total": 250
-          },
-          "bases": {
-            "shown": 176,
-            "total": 226
-          }
-        },
+        "rendered": 676,
+        "truncated": {},
         "paused": false
       },
       "basemap": {
@@ -84,15 +89,53 @@
       "terrain": {
         "status": "ready",
         "error": null
+      },
+      "borders": 270
+    },
+    {
+      "name": "default-3d-picker",
+      "afterOff": {
+        "hotspots": false,
+        "status": "unsupported",
+        "urlLayers": "conflicts,bases,hotspots,nuclear,sanctions,weather,canadaAlerts,economic,waterways,outages,military,natural"
+      },
+      "afterOn": {
+        "hotspots": true,
+        "status": "rendered"
       }
     },
     {
       "name": "regional-3d-settle",
       "tilesLoaded": true,
-      "renders": 49
+      "renders": 41
+    },
+    {
+      "name": "regional-3d",
+      "center": {
+        "lat": 31.000000000000018,
+        "lon": 36
+      },
+      "zoom": 4.20000000000131,
+      "markerLoad": {
+        "rendered": 676,
+        "truncated": {},
+        "paused": false
+      }
     }
   ],
+  "checks": {
+    "mode2d": true,
+    "darkTheme": true,
+    "privateBuild": true,
+    "noBannerIn2d": true,
+    "chrome3d": true,
+    "noIonLogo": true,
+    "basemapReady": true,
+    "bordersDrawn": true,
+    "pickerDrivesRenderer": true,
+    "noPageErrors": true
+  },
   "pass": true,
   "pageErrors": [],
-  "finishedAt": "2026-09-11T19:00:44.475Z"
+  "finishedAt": "2026-09-11T23:25:16.183Z"
 }

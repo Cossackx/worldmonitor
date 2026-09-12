@@ -5307,12 +5307,15 @@ body.playback-mode .status-dot {
   touch-action: none;
 }
 
+/* Bottom-right, above the credit dock: top-left belongs to the time-range
+   selector, which sat on top of this note in the 2026-09-11 review frames. */
 .cesium-spike-limitations-banner {
   position: absolute;
   z-index: 20;
-  top: 8px;
-  left: 8px;
-  max-width: min(440px, calc(100% - 16px));
+  right: 8px;
+  bottom: 30px;
+  max-width: min(360px, calc(100% - 16px));
+  text-align: right;
   padding: 6px 9px;
   border: 1px solid color-mix(in srgb, var(--yellow, #f2d58a) 70%, transparent);
   border-radius: 4px;
@@ -5321,6 +5324,25 @@ body.playback-mode .status-dot {
   font-size: 11px;
   line-height: 1.35;
   pointer-events: none;
+}
+
+/* Cesium credits relocated from the widget's bottom-left (where they collided
+   with the layer picker) to the same corner the 2D basemap attribution uses. */
+.cesium-credit-dock {
+  position: absolute;
+  right: 6px;
+  bottom: 4px;
+  z-index: 30;
+  pointer-events: auto;
+}
+/* CesiumWidget wraps the credits in its own absolutely positioned
+   .cesium-widget-credits inside the dock. widgets.css is unlayered and so
+   outranks this layered sheet at any specificity; the dock must still win,
+   otherwise it collapses to zero width and the credit overflows the pane. */
+.cesium-credit-dock .cesium-widget-credits {
+  position: static !important;
+  padding-right: 0 !important;
+  white-space: nowrap;
 }
 
 .map-container.map-renderer-shell {

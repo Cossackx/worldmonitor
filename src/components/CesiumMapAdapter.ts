@@ -39,6 +39,7 @@ import { GLOBE_MARKER_BUDGET_DESKTOP, GLOBE_MARKER_BUDGET_MOBILE, proximityRank,
 import { isMobileDevice } from '@/utils';
 import { CONFLICT_COUNTRY_ISO, resolveConflictZoneFeatures, type ConflictZoneFeature } from '../../shared/conflict-zone-geometry';
 import { MapPopup } from './MapPopup';
+import { CesiumMapChrome } from './CesiumMapChrome';
 import {
   buildAisDisruptionMarkers, buildCableActivityMarkers, buildClimateMarkers, buildConflictZoneMarkers, buildCyberMarkers,
   buildDdosMarkers, buildDisplacementMarkers, buildEarthquakeMarkers, buildFireMarkers, buildFlightDelayMarkers,
@@ -119,6 +120,10 @@ export interface CesiumDependency {
   VerticalOrigin: { BOTTOM: unknown; CENTER: unknown };
   HorizontalOrigin: { CENTER: unknown };
   LabelStyle: { FILL_AND_OUTLINE: unknown };
+  DistanceDisplayCondition: new (near: number, far: number) => unknown;
+  Cartesian2: new (x: number, y: number) => unknown;
+  /** Static credit registry; absent from minimal test doubles. */
+  CreditDisplay?: { cesiumCredit: unknown };
   HeightReference: { CLAMP_TO_GROUND: unknown; NONE: unknown };
   SceneTransforms?: { worldToWindowCoordinates(scene: unknown, position: unknown): { x: number; y: number } | undefined };
   EllipsoidTerrainProvider: new () => unknown;
@@ -216,6 +221,21 @@ const REGIONAL_FILL = 'rgba(255,120,0,0.18)';
 const REGIONAL_STROKE = '#ff9600';
 const COUNTRY_HIGHLIGHT_STROKE = '#00e5ff';
 const CONFLICT_ENTITY_PREFIX = 'conflict:';
+const BORDER_ENTITY_PREFIX = 'border:';
+/** Slate-400 at ~45%: the same quiet outline DeckGLMap's embed border uses. */
+const COUNTRY_BORDER_CSS = '#94a3b873';
+/**
+ * Regional conflict labels show only once the camera is within this distance
+ * of the zone (roughly zoom 3.5 and closer). The 2D renderers never draw these
+ * labels at all; they surface the text on hover.
+ */
+const CONFLICT_LABEL_MAX_DISTANCE_M = 3_000_000;
+
+/** `#rrggbb` → `#rrggbbaa`; any other CSS colour is returned unchanged. */
+function withAlpha(css: string, alpha: number): string {
+  if (!/^#[0-9a-f]{6}$/i.test(css)) return css;
+  return `${css}${Math.round(alpha * 255).toString(16).padStart(2, '0')}`;
+}
 const HIGHLIGHT_ENTITY_PREFIX = 'country-highlight:';
 
 type Ring = number[][];
@@ -292,6 +312,9 @@ export class CesiumMapAdapter {
   private countriesPromise: Promise<void> | null = null;
   private popup: CesiumPopup | null = null;
   private onCountryClick: ((country: CountryClickPayload) => void) | null = null;
+  private chrome: CesiumMapChrome | null = null;
+  private onLayerChangeCb: ((layer: keyof MapLayers, enabled: boolean, source: 'user' | 'programmatic') => void) | null = null;
+  private reselectTimer: ReturnType<typeof setTimeout> | null = null;
 
   public constructor(container: HTMLElement, initialState: MapContainerState, options: CesiumMapAdapterOptions) {
     this.container = container;
@@ -302,10 +325,36 @@ export class CesiumMapAdapter {
     this.terrainStatus = this.wantsKeylessTerrain() ? 'loading' : 'isolated';
     this.container.classList.add('globe-mode', 'cesium-map-adapter');
     this.container.style.position = 'relative';
+    // Like DeckGLMap and GlobeMap, the renderer owns its in-pane chrome; it is
+    // built synchronously so MapContainer's rehydration (layer callbacks,
+    // hidden toggles, loading badges) lands on real DOM before the viewer exists.
+    if (options.chrome) {
+      this.chrome = new CesiumMapChrome({
+        container: this.container,
+        getLayers: () => this.state.layers,
+        getTimeRange: () => this.state.timeRange,
+        onLayerToggled: (layer, enabled) => {
+          this.setLayers({ ...this.state.layers, [layer]: enabled });
+          this.onLayerChangeCb?.(layer, enabled, 'user');
+        },
+        onTimeRangeSelected: (range) => this.setTimeRange(range),
+        zoomIn: () => this.setZoom(this.state.zoom + 1),
+        zoomOut: () => this.setZoom(this.state.zoom - 1),
+        resetView: () => this.setView('global'),
+      });
+    }
   }
 
   private wantsKeylessTerrain(): boolean {
     return !!this.options.enableKeylessBasemap && this.options.enableKeylessTerrain !== false;
+  }
+
+  private createCreditDock(): HTMLElement | null {
+    if (!this.options.chrome || typeof document === 'undefined') return null;
+    const dock = document.createElement('div');
+    dock.className = 'cesium-credit-dock';
+    this.container.appendChild(dock);
+    return dock;
   }
 
   public whenReady(): Promise<void> {
@@ -316,8 +365,17 @@ export class CesiumMapAdapter {
   private async initialize(): Promise<void> {
     if (this.destroyed) return;
     try {
+      // No Cesium ion asset is ever requested (keyless Esri imagery, Re:Earth
+      // terrain), so the default ion logo would misattribute the imagery. The
+      // provider credits are registered explicitly by the basemap and terrain
+      // activators below.
+      if (this.cesium.CreditDisplay) this.cesium.CreditDisplay.cesiumCredit = undefined;
+      const creditDock = this.createCreditDock();
       const createViewer = this.options.createViewer ?? ((element, cesium) => new cesium.Viewer(element, {
         animation: false,
+        // Credits sit bottom-right, where the 2D basemap attribution lives, so
+        // they do not collide with the layer picker at bottom-left.
+        ...(creditDock ? { creditContainer: creditDock, creditViewport: element } : {}),
         baseLayerPicker: false,
         geocoder: false,
         homeButton: false,
@@ -397,7 +455,38 @@ export class CesiumMapAdapter {
       console.warn('[CesiumMapAdapter] country geometry unavailable; country-mapped conflict zones stay hidden:', error);
       this.countriesGeoData = null;
     }
+    this.renderCountryBorders();
     this.renderConflictZones();
+  }
+
+  /**
+   * Every country ring as a quiet ground-clamped polyline. The 2D pane gets
+   * its borders from the vector basemap; Esri imagery carries none, so the 3D
+   * pane showed outlines only around conflict-mapped countries (2026-09-11
+   * default-layout review). Same canonical GeoJSON the 2D renderers use.
+   */
+  private renderCountryBorders(): void {
+    const viewer = this.viewer;
+    if (!viewer || this.destroyed) return;
+    this.removeEntitiesWithPrefix(BORDER_ENTITY_PREFIX);
+    const material = this.cesium.Color.fromCssColorString(COUNTRY_BORDER_CSS);
+    (this.countriesGeoData?.features ?? []).forEach((feature, featureIndex) => {
+      if (!feature.geometry) return;
+      polygonRingSets(feature.geometry).forEach((rings, polygonIndex) => {
+        rings.forEach((ring, ringIndex) => {
+          if (ring.length < 2) return;
+          const id = `${BORDER_ENTITY_PREFIX}${featureIndex}:${polygonIndex}:${ringIndex}`;
+          viewer.entities.add({ id, polyline: { positions: this.ringToPositions(ring), width: 1, material, clampToGround: true } });
+          this.entityIds.add(id);
+        });
+      });
+    });
+    viewer.scene.requestRender?.();
+  }
+
+  /** Ids of the country border polylines currently on the globe (diagnostics and tests). */
+  public getBorderEntityIds(): string[] {
+    return [...this.entityIds].filter((id) => id.startsWith(BORDER_ENTITY_PREFIX));
   }
 
   // ─── Conflict zones and country boundaries ────────────────────────────────
@@ -479,8 +568,15 @@ export class CesiumMapAdapter {
               outlineWidth: 3,
               style: this.cesium.LabelStyle.FILL_AND_OUTLINE,
               verticalOrigin: this.cesium.VerticalOrigin.BOTTOM,
+              horizontalOrigin: this.cesium.HorizontalOrigin.CENTER,
+              pixelOffset: new this.cesium.Cartesian2(0, -6),
               heightReference: this.cesium.HeightReference.CLAMP_TO_GROUND,
               disableDepthTestDistance: Number.POSITIVE_INFINITY,
+              // The 2D renderers surface this text only on hover/popup. Drawing
+              // every regional label at world scale stacked six sentences over
+              // the Levant (2026-09-11 review), so the label appears only once
+              // the camera is within regional range of the zone.
+              distanceDisplayCondition: new this.cesium.DistanceDisplayCondition(0, CONFLICT_LABEL_MAX_DISTANCE_M),
             },
           });
           this.entityIds.add(labelId);
@@ -689,7 +785,23 @@ export class CesiumMapAdapter {
       if (this.destroyed) return;
       this.syncStateFromCamera();
       this.onState?.(this.getState());
+      this.scheduleMarkerReselect();
     });
+  }
+
+  /**
+   * Re-run the nearest-first marker budget once the camera settles, so a
+   * capped layer follows the view instead of keeping the markers nearest the
+   * previous centre (GlobeMap.reselectMarkersForViewport, #5368). Only when
+   * something is withheld: an untruncated selection is view-independent.
+   */
+  private scheduleMarkerReselect(): void {
+    if (Object.keys(this.markerTruncation).length === 0) return;
+    if (this.reselectTimer) clearTimeout(this.reselectTimer);
+    this.reselectTimer = setTimeout(() => {
+      this.reselectTimer = null;
+      if (!this.destroyed) this.flushMarkers();
+    }, 400);
   }
 
   private handlePick(position: { x: number; y: number } | undefined, contextMenu: boolean): void {
@@ -705,7 +817,8 @@ export class CesiumMapAdapter {
       return;
     }
     const pickedId = this.viewer.scene.pick?.(position)?.id?.id;
-    if (pickedId) {
+    // Border polylines are decoration: a click on one is a bare globe click.
+    if (pickedId && !pickedId.startsWith(BORDER_ENTITY_PREFIX)) {
       this.hideTooltip();
       const zone = this.conflictZoneForEntityId(pickedId);
       if (zone) { this.showConflictPopup(zone, position); return; }
@@ -773,11 +886,16 @@ export class CesiumMapAdapter {
     this.syncStateFromCamera();
     return { ...this.state, pan: { ...this.state.pan }, layers: { ...this.state.layers } };
   }
-  public setTimeRange(range: TimeRange): void { this.state = { ...this.state, timeRange: range }; this.onTimeRange?.(range); }
+  public setTimeRange(range: TimeRange): void {
+    this.state = { ...this.state, timeRange: range };
+    this.chrome?.syncTimeRange(range);
+    this.onTimeRange?.(range);
+  }
   public getTimeRange(): TimeRange { return this.state.timeRange; }
   public setLayers(layers: MapLayers): void {
     const previous = this.state.layers;
     this.state = { ...this.state, layers: { ...layers } };
+    this.chrome?.syncLayers(this.state.layers);
     const changed = (Object.keys({ ...previous, ...layers }) as (keyof MapLayers)[]).filter((k) => (previous[k] === true) !== (layers[k] === true));
     if (changed.length === 0) return;
     if (changed.includes('conflicts')) this.renderConflictZones();
@@ -792,7 +910,8 @@ export class CesiumMapAdapter {
 
   public onStateChanged(callback: (state: MapContainerState) => void): void { this.onState = callback; }
   public onTimeRangeChanged(callback: (range: TimeRange) => void): void { this.onTimeRange = callback; }
-  public setOnLayerChange(_callback: (layer: keyof MapLayers, enabled: boolean, source: 'user' | 'programmatic') => void): void { /* Layer toggles live in the dashboard chrome, not on the globe. */ }
+  public setOnLayerChange(callback: (layer: keyof MapLayers, enabled: boolean, source: 'user' | 'programmatic') => void): void { this.onLayerChangeCb = callback; }
+  public hideLayerToggle(layer: keyof MapLayers): void { this.chrome?.hideLayerToggle(layer); }
   public setOnMapContextMenu(callback: (payload: { lat: number; lon: number; screenX: number; screenY: number; countryCode?: string; countryName?: string }) => void): void { this.onContextMenu = callback; }
   public setOnHotspotClick(callback: (hotspot: Hotspot) => void): void { this.onHotspotClick = callback; }
   public onHotspotClicked(callback: (hotspot: Hotspot) => void): void { this.onHotspotClick = callback; }
@@ -861,6 +980,19 @@ export class CesiumMapAdapter {
       properties: { kind: m.kind, layer: true },
     };
     if (m.style.glyph) {
+      // A numeric glyph is a count badge (vessel and webcam clusters). GlobeMap
+      // draws it inside a tinted ring; without the ring the digits float bare
+      // on the imagery (the stray red "21" in the 2026-09-11 review).
+      if (/^\d+$/.test(m.style.glyph)) {
+        base.point = {
+          pixelSize: Math.round(m.style.size * 1.8),
+          color: this.cssColor(withAlpha(m.style.color, 0.18)),
+          outlineColor: this.cssColor(withAlpha(m.style.color, 0.8)),
+          outlineWidth: 2,
+          heightReference: clamped ? this.cesium.HeightReference.CLAMP_TO_GROUND : this.cesium.HeightReference.NONE,
+          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+        };
+      }
       base.label = {
         text: m.style.glyph,
         font: `${m.style.size}px sans-serif`,
@@ -917,6 +1049,7 @@ export class CesiumMapAdapter {
     }
     this.markerTruncation = truncated;
     this.renderedMarkerCount = markers.length;
+    this.chrome?.renderTruncation(truncated);
     this.viewer.scene.requestRender?.();
   }
 
@@ -1086,8 +1219,8 @@ export class CesiumMapAdapter {
     this.renderPaused = paused;
     if (this.viewer && 'useDefaultRenderLoop' in this.viewer) (this.viewer as { useDefaultRenderLoop?: boolean }).useDefaultRenderLoop = !paused;
   }
-  public setLayerLoading(_layer: keyof MapLayers, _loading: boolean): void { /* Loading badges are dashboard chrome. */ }
-  public setLayerReady(_layer: keyof MapLayers, _hasData: boolean): void { /* Setters own readiness. */ }
+  public setLayerLoading(layer: keyof MapLayers, loading: boolean): void { this.chrome?.setLayerLoading(layer, loading); }
+  public setLayerReady(layer: keyof MapLayers, hasData: boolean): void { this.chrome?.setLayerReady(layer, hasData); }
 
   /** Marker budget outcome, for diagnostics parity with GlobeMap. */
   public getMarkerLoad(): { rendered: number; truncated: Record<string, unknown>; paused: boolean } {
@@ -1112,6 +1245,9 @@ export class CesiumMapAdapter {
     if (this.destroyed) return;
     this.destroyed = true;
     if (this.flashTimer) clearTimeout(this.flashTimer);
+    if (this.reselectTimer) clearTimeout(this.reselectTimer);
+    this.chrome?.destroy();
+    this.chrome = null;
     this.removeCameraChangedListener?.();
     this.removeCameraChangedListener = null;
     this.syncEsriAttribution(false);

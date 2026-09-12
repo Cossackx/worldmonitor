@@ -1,6 +1,6 @@
 {
   "url": "http://127.0.0.1:4200/?cesiumSpike=1&lat=32&lon=53&zoom=4&layers=conflicts",
-  "startedAt": "2026-09-11T17:23:45.238Z",
+  "startedAt": "2026-09-11T23:21:51.819Z",
   "steps": [
     {
       "name": "adapter-status",
@@ -38,12 +38,12 @@
     {
       "name": "settle-with-conflicts",
       "tilesLoaded": true,
-      "renders": 6
+      "renders": 11
     },
     {
       "name": "settle-wide-with-conflicts",
       "tilesLoaded": true,
-      "renders": 7
+      "renders": 10
     },
     {
       "name": "settle-wide-without-conflicts",
@@ -54,15 +54,15 @@
       "name": "pixel-diff",
       "canvas": {
         "w": 862,
-        "h": 689
+        "h": 725
       },
-      "changedPixels": 79328,
-      "changedFraction": 0.134,
+      "changedPixels": 50159,
+      "changedFraction": 0.08,
       "changedBox": {
         "x": 0,
         "y": 0,
         "w": 862,
-        "h": 511
+        "h": 538
       },
       "localFootprint": true
     },
@@ -94,10 +94,10 @@
     {
       "name": "settle-fit",
       "tilesLoaded": true,
-      "renders": 1
+      "renders": 6
     }
   ],
   "pass": true,
   "pageErrors": [],
-  "finishedAt": "2026-09-11T17:23:50.902Z"
+  "finishedAt": "2026-09-11T23:22:01.948Z"
 }
