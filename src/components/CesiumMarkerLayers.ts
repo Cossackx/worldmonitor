@@ -33,6 +33,7 @@ import type { DisplacementFlow } from '@/services/displacement';
 import type { ClimateAnomaly } from '@/services/climate';
 import type { GpsJamHex } from '@/services/gps-interference';
 import type { SatellitePosition } from '@/services/satellites';
+import { classifyShipType, SHIP_CLASS_LABELS, type ShipClass, type ShipContact } from '@/services/private-ship-traffic';
 import type { RadiationObservation } from '@/services/radiation';
 import type { ImageryScene } from '@/generated/server/worldmonitor/imagery/v1/service_server';
 import type { WebcamEntry, WebcamCluster } from '@/generated/client/worldmonitor/webcam/v1/service_client';
@@ -243,6 +244,35 @@ export function buildAisDisruptionMarkers(disruptions: AisDisruptionEvent[]): Ce
     id: d.id, kind: 'aisDisruption', lat: d.lat, lon: d.lon, title: d.name,
     style: { glyph: '⛴', color: d.severity === 'high' ? '#ff2020' : d.severity === 'elevated' ? '#ff8800' : '#44aaff', size: 13 },
   }));
+}
+
+// ─── Private-build ship traffic (all AIS contacts) ──────────────────────────
+// MarineTraffic-style class colours so the operator reads the picture at a
+// glance; VesselAPI-sourced contacts keep their class colour but get a hollow
+// diamond so a paid "check" result is distinguishable from the volunteer feed.
+export const SHIP_CLASS_COLORS: Record<ShipClass, string> = {
+  cargo: '#7cd992', tanker: '#ff6b6b', passenger: '#5fa8ff', fishing: '#f6c453', tug: '#4fd1c5',
+  highSpeed: '#f9a8d4', pleasure: '#d8b4fe', military: '#ff9f43', sar: '#ffd166', other: '#a0aec0',
+};
+
+export function shipContactTitle(c: ShipContact, now = Date.now()): string {
+  const cls = SHIP_CLASS_LABELS[classifyShipType(c.shipType)];
+  const speed = c.speed !== null ? ` · ${c.speed.toFixed(1)} kn` : '';
+  const course = c.course !== null ? ` · ${Math.round(c.course)}°` : '';
+  const ageMin = Math.max(0, Math.round((now - c.timestamp) / 60_000));
+  return `${c.name || `MMSI ${c.mmsi}`} · ${cls}${speed}${course} · ${ageMin} min ago · ${c.source === 'vesselapi' ? 'VesselAPI' : 'AIS relay'}`;
+}
+
+export function buildShipContactMarkers(contacts: ShipContact[], now = Date.now()): CesiumMarker[] {
+  return (contacts ?? []).filter((c) => finite(c.lat, c.lon)).map((c) => {
+    const cls = classifyShipType(c.shipType);
+    const moving = (c.speed ?? 0) >= 0.5;
+    return {
+      id: c.mmsi, kind: 'ship', lat: c.lat, lon: c.lon, rank: c.source === 'vesselapi' ? 2 : moving ? 1 : 0,
+      title: shipContactTitle(c, now),
+      style: { glyph: c.source === 'vesselapi' ? '◇' : moving ? '▲' : '●', color: SHIP_CLASS_COLORS[cls], size: c.source === 'vesselapi' ? 13 : moving ? 11 : 8 },
+    };
+  });
 }
 
 export function buildCableActivityMarkers(advisories: CableAdvisory[], repairShips: RepairShip[]): { advisories: CesiumMarker[]; ships: CesiumMarker[]; faultIds: Set<string>; degradedIds: Set<string> } {

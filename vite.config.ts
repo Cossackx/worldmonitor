@@ -881,6 +881,116 @@ function youtubeLivePlugin(): Plugin {
   };
 }
 
+/**
+ * Private-build ship traffic routes (VITE_PRIVATE_WORKSPACE=1 only).
+ *
+ *  - /api/private/ais/vessels?bbox=  → relay /ais/vessels with the relay key
+ *    (the relay listing itself is enabled by RELAY_PRIVATE_VESSELS=true, set
+ *    by scripts/local-ais-preview.mjs).
+ *  - /api/private/vesselapi/bbox?bbox= → VesselAPI bounding-box lookup with
+ *    VESSELAPI_API_KEY, normalised to the same contact shape. The free tier is
+ *    ~150 requests/month, so this route is the "check" half of cue-then-check:
+ *    it refuses spans over 4° and caps itself per process per day.
+ *
+ * Neither route exists without the flag; hosted builds never see them.
+ */
+function privateShipTrafficPlugin(): Plugin {
+  const VESSELAPI_DAILY_CAP = 12;
+  const VESSELAPI_MAX_SPAN_DEG = 4;
+  let vesselApiDay = '';
+  let vesselApiUsedToday = 0;
+  let vesselApiRemaining: string | null = null;
+
+  const parseBbox = (raw: string | null) => {
+    if (!raw) return null;
+    const parts = raw.split(',').map(Number);
+    if (parts.length !== 4 || parts.some((v) => !Number.isFinite(v))) return null;
+    const [swLat, swLon, neLat, neLon] = parts as [number, number, number, number];
+    if (swLat > neLat || swLon > neLon || swLat < -90 || neLat > 90 || swLon < -180 || neLon > 180) return null;
+    return { swLat, swLon, neLat, neLon };
+  };
+  const json = (res: import('http').ServerResponse, status: number, body: unknown) => {
+    res.statusCode = status;
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-store');
+    res.end(JSON.stringify(body));
+  };
+
+  return {
+    name: 'private-ship-traffic',
+    configureServer(server) {
+      if (process.env.VITE_PRIVATE_WORKSPACE !== '1') return;
+      server.middlewares.use(async (req, res, next) => {
+        if (!req.url?.startsWith('/api/private/')) return next();
+        const url = new URL(req.url, 'http://localhost');
+
+        if (url.pathname === '/api/private/ais/vessels') {
+          const relay = process.env.WS_RELAY_URL?.replace(/^ws(s?):\/\//, 'http$1://').replace(/\/$/, '');
+          if (!relay) return json(res, 503, { error: 'relay_not_configured', vessels: [] });
+          try {
+            const headers: Record<string, string> = { Accept: 'application/json' };
+            if (process.env.RELAY_SHARED_SECRET) headers[(process.env.RELAY_AUTH_HEADER || 'x-relay-key').toLowerCase()] = process.env.RELAY_SHARED_SECRET;
+            const upstream = await fetch(`${relay}/ais/vessels${url.search}`, { headers, signal: AbortSignal.timeout(8_000) });
+            const text = await upstream.text();
+            res.statusCode = upstream.status;
+            res.setHeader('Content-Type', 'application/json; charset=utf-8');
+            res.setHeader('Cache-Control', 'no-store');
+            res.end(text);
+          } catch (error) {
+            json(res, 502, { error: 'relay_unreachable', detail: error instanceof Error ? error.message : String(error), vessels: [] });
+          }
+          return;
+        }
+
+        if (url.pathname === '/api/private/vesselapi/bbox') {
+          const key = process.env.VESSELAPI_API_KEY;
+          if (!key) return json(res, 503, { error: 'vesselapi_key_missing', vessels: [] });
+          const bbox = parseBbox(url.searchParams.get('bbox'));
+          if (!bbox) return json(res, 400, { error: 'invalid_bbox', vessels: [] });
+          const span = Math.max(bbox.neLat - bbox.swLat, bbox.neLon - bbox.swLon);
+          if (span > VESSELAPI_MAX_SPAN_DEG) return json(res, 400, { error: 'bbox_too_large', maxSpanDeg: VESSELAPI_MAX_SPAN_DEG, spanDeg: Number(span.toFixed(2)), vessels: [] });
+          const today = new Date().toISOString().slice(0, 10);
+          if (vesselApiDay !== today) { vesselApiDay = today; vesselApiUsedToday = 0; }
+          if (vesselApiUsedToday >= VESSELAPI_DAILY_CAP) return json(res, 429, { error: 'daily_cap', cap: VESSELAPI_DAILY_CAP, remainingMonth: vesselApiRemaining, vessels: [] });
+          vesselApiUsedToday++;
+          const now = Date.now();
+          const q = new URLSearchParams({
+            'filter.latBottom': String(bbox.swLat), 'filter.latTop': String(bbox.neLat),
+            'filter.lonLeft': String(bbox.swLon), 'filter.lonRight': String(bbox.neLon),
+            'time.from': new Date(now - 3 * 60 * 60 * 1000).toISOString(), 'time.to': new Date(now).toISOString(),
+          });
+          try {
+            const upstream = await fetch(`https://api.vesselapi.com/v1/location/vessels/bounding-box?${q}`, {
+              headers: { Authorization: `Bearer ${key}`, Accept: 'application/json' }, signal: AbortSignal.timeout(15_000),
+            });
+            vesselApiRemaining = upstream.headers.get('x-ratelimit-remaining');
+            const body = await upstream.json().catch(() => null) as { vessels?: Array<Record<string, unknown>>; nextToken?: unknown } | null;
+            if (!upstream.ok || !body) return json(res, upstream.status || 502, { error: 'vesselapi_error', status: upstream.status, remainingMonth: vesselApiRemaining, vessels: [] });
+            const vessels = (body.vessels ?? []).map((v) => {
+              const ts = Date.parse(String(v.timestamp ?? ''));
+              return {
+                mmsi: String(v.mmsi ?? ''), name: String(v.vessel_name ?? ''), lat: Number(v.latitude), lon: Number(v.longitude),
+                timestamp: Number.isFinite(ts) ? ts : now, shipType: 0,
+                heading: Number.isFinite(Number(v.heading)) ? Number(v.heading) : null,
+                speed: Number.isFinite(Number(v.sog)) ? Number(v.sog) : null,
+                course: Number.isFinite(Number(v.cog)) ? Number(v.cog) : null,
+                imo: Number.isFinite(Number(v.imo)) ? Number(v.imo) : null,
+                navStatus: Number.isFinite(Number(v.nav_status)) ? Number(v.nav_status) : null,
+                suspectedGlitch: v.suspected_glitch === true,
+              };
+            }).filter((v) => v.mmsi && Number.isFinite(v.lat) && Number.isFinite(v.lon));
+            return json(res, 200, { vessels, total: vessels.length, truncated: Boolean(body.nextToken), remainingMonth: vesselApiRemaining, usedToday: vesselApiUsedToday, dailyCap: VESSELAPI_DAILY_CAP, fetchedAt: now });
+          } catch (error) {
+            return json(res, 502, { error: 'vesselapi_unreachable', detail: error instanceof Error ? error.message : String(error), vessels: [] });
+          }
+        }
+
+        return next();
+      });
+    },
+  };
+}
+
 function gpsjamDevPlugin(): Plugin {
   return {
     name: 'gpsjam-dev',
@@ -1030,6 +1140,7 @@ export default defineConfig(({ mode }) => {
       rssProxyPlugin(),
       youtubeLivePlugin(),
       gpsjamDevPlugin(),
+      privateShipTrafficPlugin(),
       sebufApiPlugin(),
       brotliPrecompressPlugin(),
       VitePWA({

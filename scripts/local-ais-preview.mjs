@@ -29,6 +29,8 @@ const OPENSKY_ENV_NAMES = ['OPENSKY_CLIENT_ID', 'OPENSKY_CLIENT_SECRET', 'OPENSK
 // paid model is ever requested.
 const LLM_ENV_PREFIXES = ['LLM_', 'OPENROUTER_FREE_', 'FORECAST_LLM_'];
 const LLM_ENV_NAMES = ['OPENROUTER_API_KEY', 'AI_DIGEST_ENABLED', 'AI_IMPACT_ENABLED'];
+// Optional: VesselAPI key for the private ship layer's on-demand "check" (never required).
+const OPTIONAL_ENV_NAMES = ['VESSELAPI_API_KEY'];
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(SCRIPT_DIR, '..');
@@ -66,7 +68,7 @@ export function readArgs(argv) {
  */
 export function loadKeys(envPath, { withOpenSky = false, withLlm = false } = {}) {
   if (!existsSync(envPath)) throw new Error(`Environment file not found: ${envPath}`);
-  const wanted = ['AISSTREAM_API_KEY', ...(withOpenSky ? OPENSKY_ENV_NAMES : []), ...(withLlm ? LLM_ENV_NAMES : [])];
+  const wanted = ['AISSTREAM_API_KEY', ...OPTIONAL_ENV_NAMES, ...(withOpenSky ? OPENSKY_ENV_NAMES : []), ...(withLlm ? LLM_ENV_NAMES : [])];
   for (const name of [...wanted, 'VITE_AISSTREAM_API_KEY']) delete process.env[name];
   if (withLlm) for (const name of Object.keys(process.env)) if (LLM_ENV_PREFIXES.some((p) => name.startsWith(p))) delete process.env[name];
   loadEnvFile(envPath);
@@ -83,7 +85,9 @@ export function loadKeys(envPath, { withOpenSky = false, withLlm = false } = {})
     for (const name of Object.keys(process.env)) if (LLM_ENV_PREFIXES.some((p) => name.startsWith(p)) && process.env[name]) llm[name] = process.env[name];
     if (!llm.OPENROUTER_API_KEY) throw new Error('--with-llm requires OPENROUTER_API_KEY in the supplied environment file');
   }
-  return { aisKey: key, openSky, llm };
+  const optional = {};
+  for (const name of OPTIONAL_ENV_NAMES) if (process.env[name]) optional[name] = process.env[name];
+  return { aisKey: key, openSky, llm, optional };
 }
 
 function start(command, args, env) {
@@ -97,7 +101,7 @@ function start(command, args, env) {
 
 async function main() {
   const { envPath, withOpenSky, withLlm } = readArgs(process.argv.slice(2));
-  const { aisKey, openSky, llm } = loadKeys(envPath, { withOpenSky, withLlm });
+  const { aisKey, openSky, llm, optional } = loadKeys(envPath, { withOpenSky, withLlm });
   const relaySecret = randomBytes(32).toString('hex');
   const common = {
     HOST: RELAY_HOST,
@@ -106,8 +110,8 @@ async function main() {
     VITE_WS_RELAY_URL: RELAY_URL,
     WM_SKIP_DOTENV: '1',
   };
-  const relayEnv = isolatedEnv({ ...common, ...openSky, ...llm, PORT: String(RELAY_PORT), AISSTREAM_API_KEY: aisKey, RELAY_TEST_MODE: 'true' });
-  const viteEnv = isolatedEnv({ ...common, ...llm, PORT: String(PREVIEW_PORT), VITE_VARIANT: 'full', VITE_PRIVATE_WORKSPACE: '1' });
+  const relayEnv = isolatedEnv({ ...common, ...openSky, ...llm, PORT: String(RELAY_PORT), AISSTREAM_API_KEY: aisKey, RELAY_TEST_MODE: 'true', RELAY_PRIVATE_VESSELS: 'true' });
+  const viteEnv = isolatedEnv({ ...common, ...llm, PORT: String(PREVIEW_PORT), VITE_VARIANT: 'full', VITE_PRIVATE_WORKSPACE: '1', ...optional });
 
   const relay = start(RELAY_SCRIPT, [], relayEnv);
   let preview;

@@ -9520,6 +9520,47 @@ function parseBbox(raw) {
  *
  * @param {{ sw: {lat:number,lon:number}, ne: {lat:number,lon:number} } | null} bbox
  */
+// ─── Private all-ships listing (RELAY_PRIVATE_VESSELS=true only) ────────────
+// The hosted product never exposes raw per-vessel positions: the snapshot
+// carries density zones, disruptions and the capped military-candidate and
+// tanker reports. The personal build's Cesium "Ship Traffic" layer needs every
+// live position inside the camera's view, so the private launcher enables this
+// bbox-scoped listing over the same in-memory `vessels` map. Off by default;
+// the route 404s (falls through) without the flag so hosted behaviour is
+// unchanged. Same relay auth as every other non-public route.
+const PRIVATE_VESSELS_ENABLED = process.env.RELAY_PRIVATE_VESSELS === 'true';
+const PRIVATE_VESSELS_DEFAULT_LIMIT = 400;
+const PRIVATE_VESSELS_MAX_LIMIT = 1500;
+const PRIVATE_VESSELS_MAX_AGE_MS = 20 * 60 * 1000;
+
+/** Pure selection over a vessel iterable; exported for tests. */
+function selectVesselsInBbox(vesselIterable, bbox, { limit = PRIVATE_VESSELS_DEFAULT_LIMIT, now = Date.now(), maxAgeMs = PRIVATE_VESSELS_MAX_AGE_MS } = {}) {
+  const cutoff = now - maxAgeMs;
+  const cap = Math.max(1, Math.min(PRIVATE_VESSELS_MAX_LIMIT, Number(limit) || PRIVATE_VESSELS_DEFAULT_LIMIT));
+  const out = [];
+  let total = 0;
+  for (const v of vesselIterable) {
+    if (!v || !Number.isFinite(v.lat) || !Number.isFinite(v.lon)) continue;
+    if (!(v.timestamp >= cutoff)) continue;
+    if (bbox && (v.lat < bbox.sw.lat || v.lat > bbox.ne.lat || v.lon < bbox.sw.lon || v.lon > bbox.ne.lon)) continue;
+    total++;
+    out.push(v);
+  }
+  out.sort((a, b) => b.timestamp - a.timestamp);
+  const vessels = out.slice(0, cap).map((v) => ({
+    mmsi: String(v.mmsi),
+    name: v.name || '',
+    lat: v.lat,
+    lon: v.lon,
+    timestamp: v.timestamp,
+    shipType: Number.isFinite(v.shipType) ? v.shipType : 0,
+    heading: Number.isFinite(v.heading) ? v.heading : null,
+    speed: Number.isFinite(v.speed) ? v.speed : null,
+    course: Number.isFinite(v.course) ? v.course : null,
+  }));
+  return { vessels, total, truncated: total > vessels.length };
+}
+
 function getTankerReportsSnapshot(bbox) {
   let arr = Array.from(tankerReports.values());
   if (bbox) {
@@ -12024,6 +12065,21 @@ const server = http.createServer(async (req, res) => {
       'Content-Type': 'application/json',
       'Cache-Control': 'no-store',
     }, JSON.stringify({ ok: true }));
+  } else if (pathname === '/ais/vessels' && PRIVATE_VESSELS_ENABLED) {
+    // Private all-ships listing; see selectVesselsInBbox. bbox is
+    // swLat,swLon,neLat,neLon (parseBbox's 10-degree guard applies); without a
+    // bbox the newest `limit` positions worldwide are returned.
+    const url = new URL(req.url, `http://localhost:${PORT}`);
+    const rawBbox = url.searchParams.get('bbox');
+    const bbox = parseBbox(rawBbox);
+    if (rawBbox && !bbox) {
+      return sendCompressed(req, res, 400, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }, JSON.stringify({ error: 'invalid bbox (swLat,swLon,neLat,neLon; max 10 degree span)' }));
+    }
+    const result = selectVesselsInBbox(vessels.values(), bbox, { limit: url.searchParams.get('limit') });
+    return sendCompressed(req, res, 200, {
+      'Content-Type': 'application/json',
+      'Cache-Control': 'no-store',
+    }, JSON.stringify({ ...result, snapshotAt: Date.now(), bbox: bbox ? [bbox.sw.lat, bbox.sw.lon, bbox.ne.lat, bbox.ne.lon] : null }));
   } else if (pathname.startsWith('/ais/snapshot')) {
     incrementRelayMetric('aisSnapshotRequests');
     // Aggregated AIS snapshot for server-side fanout — serve pre-serialized + pre-gzipped

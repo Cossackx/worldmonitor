@@ -14,6 +14,8 @@ import * as Cesium from 'cesium';
 import type { FeatureCollection, Geometry } from 'geojson';
 import type { MapContainerState, MapView, TimeRange } from './MapContainer';
 import type { CountryClickPayload } from './DeckGLMap';
+import { PRIVATE_WORKSPACE_ENABLED } from '@/config/private-workspace';
+import { ShipTrafficFeed, type ShipBounds, type ShipContact, type ShipFeedStatus } from '@/services/private-ship-traffic';
 import type {
   MapLayers, NaturalEvent, SocialUnrestEvent, Hotspot, ConflictZone, MilitaryFlight, MilitaryVessel, MilitaryVesselCluster,
   InternetOutage, CyberThreat, UcdpGeoEvent, CableAdvisory, RepairShip, AisDisruptionEvent, AisDensityZone, MilitaryBase,
@@ -47,7 +49,7 @@ import {
   buildMilitaryFlightMarkers, buildMilitaryVesselMarkers, buildNaturalMarkers, buildNewsLocationMarkers, buildOutageMarkers,
   buildProtestMarkers, buildRadiationMarkers, buildSatelliteMarkers, buildStaticMarkers, buildStaticPaths,
   buildStormPathsAndCones, buildTechEventMarkers, buildTradeRouteArcs, buildTrafficAnomalyMarkers, buildUcdpMarkers,
-  buildVesselClusterMarkers, buildWeatherMarkers, buildWebcamMarkers, CII_COLORS,
+  buildShipContactMarkers, buildVesselClusterMarkers, buildWeatherMarkers, buildWebcamMarkers, CII_COLORS, shipContactTitle,
   type CesiumMarker, type CesiumPath, type CesiumPolygon, type MarkerGroupRecord,
 } from './CesiumMarkerLayers';
 
@@ -150,6 +152,7 @@ export interface CesiumViewer {
       positionCartographic?: { longitude: number; latitude: number; height?: number };
       changed?: { addEventListener(callback: () => void): () => void };
       pickEllipsoid?: (position: { x: number; y: number }, ellipsoid?: unknown) => unknown;
+      computeViewRectangle?: (ellipsoid?: unknown) => { west: number; south: number; east: number; north: number } | undefined;
     };
     globe?: { ellipsoid?: unknown };
     frameState?: { creditDisplay?: CesiumCreditDisplay };
@@ -290,6 +293,15 @@ export class CesiumMapAdapter {
   private scenarioIso2s: string[] = [];
   private onHotspotClick: ((hotspot: Hotspot) => void) | null = null;
   private tooltipEl: HTMLElement | null = null;
+  // ─── Private-build ship traffic (see src/services/private-ship-traffic.ts) ───
+  private shipFeed: ShipTrafficFeed | null = null;
+  private shipStatusEl: HTMLElement | null = null;
+  private shipCardEl: HTMLElement | null = null;
+  private shipCardMmsi: string | null = null;
+  /** MMSI whose trail is drawn; `followShip` also re-centres the camera on each fix. */
+  private trackedShipMmsi: string | null = null;
+  private followShip = false;
+  private shipRefreshTimer: ReturnType<typeof setTimeout> | null = null;
   private basesLoadPending = false;
   private markerTruncation: Record<string, unknown> = {};
   private renderedMarkerCount = 0;
@@ -401,6 +413,7 @@ export class CesiumMapAdapter {
       this.popup = (this.options.createPopup ?? ((container) => new MapPopup(container) as unknown as CesiumPopup))(this.container);
       this.installPicking();
       this.installCameraTracking();
+      this.syncShipFeed();
       this.applyCenter(this.state.pan.y, this.state.pan.x, this.state.zoom);
       this.ensureStaticLayers();
       this.flushAll();
@@ -786,6 +799,7 @@ export class CesiumMapAdapter {
       this.syncStateFromCamera();
       this.onState?.(this.getState());
       this.scheduleMarkerReselect();
+      this.scheduleShipRefresh();
     });
   }
 
@@ -899,6 +913,7 @@ export class CesiumMapAdapter {
     const changed = (Object.keys({ ...previous, ...layers }) as (keyof MapLayers)[]).filter((k) => (previous[k] === true) !== (layers[k] === true));
     if (changed.length === 0) return;
     if (changed.includes('conflicts')) this.renderConflictZones();
+    if (changed.includes('ais')) this.syncShipFeed();
     this.ensureStaticLayers();
     this.flushAll();
   }
@@ -1108,6 +1123,7 @@ export class CesiumMapAdapter {
   }
 
   private handleMarkerClick(m: CesiumMarker, position: { x: number; y: number }): void {
+    if (m.kind === 'ship') { this.showShipCard(m.id, position); return; }
     if (m.hotspot) this.onHotspotClick?.(m.hotspot);
     if (m.zoomOnClick) { this.applyCenter(m.lat, m.lon, Math.min(MAX_ZOOM, this.state.zoom + 1.3)); return; }
     if (m.popup && this.popup) {
@@ -1138,6 +1154,188 @@ export class CesiumMapAdapter {
   private hideTooltip(): void {
     this.tooltipEl?.remove();
     this.tooltipEl = null;
+  }
+
+  // ─── Private-build ship traffic: feed, status chip, click-to-track ──────────
+
+  /** Camera view rectangle in degrees, or null when the globe is not on screen. */
+  public getViewBounds(): ShipBounds | null {
+    const scene = this.viewer?.scene;
+    if (!scene) return null;
+    const rect = scene.camera.computeViewRectangle?.(scene.globe?.ellipsoid);
+    if (!rect) return null;
+    const d = (r: number) => this.cesium.Math.toDegrees(r);
+    const b = { swLat: d(rect.south), swLon: d(rect.west), neLat: d(rect.north), neLon: d(rect.east) };
+    if (![b.swLat, b.swLon, b.neLat, b.neLon].every(Number.isFinite) || b.neLon < b.swLon) return null;
+    return b;
+  }
+
+  private shipLayerWanted(): boolean {
+    return PRIVATE_WORKSPACE_ENABLED && this.state.layers.ais === true && !this.destroyed;
+  }
+
+  private syncShipFeed(): void {
+    if (!this.shipLayerWanted()) { this.teardownShipFeed(); return; }
+    if (this.shipFeed) return;
+    this.shipFeed = new ShipTrafficFeed({
+      getBounds: () => this.getViewBounds(),
+      onUpdate: (contacts, status) => this.onShipUpdate(contacts, status),
+    });
+    this.ensureShipStatusChip();
+    this.shipFeed.start();
+  }
+
+  private teardownShipFeed(): void {
+    if (this.shipRefreshTimer) { clearTimeout(this.shipRefreshTimer); this.shipRefreshTimer = null; }
+    this.shipFeed?.stop();
+    this.shipFeed = null;
+    this.shipStatusEl?.remove();
+    this.shipStatusEl = null;
+    this.hideShipCard();
+    this.trackedShipMmsi = null;
+    this.followShip = false;
+    if (this.markerGroups.delete('ships') || this.pathGroups.delete('shipTrack')) { if (!this.destroyed) { this.flushMarkers(); this.flushPaths(); } }
+  }
+
+  private scheduleShipRefresh(): void {
+    if (!this.shipFeed) return;
+    if (this.shipRefreshTimer) clearTimeout(this.shipRefreshTimer);
+    this.shipRefreshTimer = setTimeout(() => { this.shipRefreshTimer = null; void this.shipFeed?.refresh(); }, 900);
+  }
+
+  private onShipUpdate(contacts: ShipContact[], status: ShipFeedStatus): void {
+    if (this.destroyed || !this.shipFeed) return;
+    // Exempt from the shared budget: the relay listing is already bbox-scoped
+    // and capped, and a per-layer 300 cut would drop half of a busy strait.
+    this.setGroup('ships', 'ais', buildShipContactMarkers(contacts), true);
+    this.renderShipTrack();
+    this.renderShipStatus(status);
+    if (this.shipCardMmsi) this.refreshShipCard();
+  }
+
+  private ensureShipStatusChip(): void {
+    if (this.shipStatusEl) return;
+    const el = document.createElement('div');
+    el.className = 'cesium-ship-status';
+    el.style.cssText = 'position:absolute;left:50%;transform:translateX(-50%);top:84px;z-index:900;display:flex;gap:6px;align-items:center;padding:4px 8px;border-radius:3px;background:rgba(10,12,16,0.9);border:1px solid rgba(60,120,60,0.6);color:#d4d4d4;font-family:var(--font-mono, monospace);font-size:11px;line-height:1.4;pointer-events:auto;';
+    const text = document.createElement('span');
+    text.className = 'cesium-ship-status__text';
+    text.textContent = 'Ship traffic: starting…';
+    const check = document.createElement('button');
+    check.type = 'button';
+    check.className = 'cesium-ship-status__check';
+    check.title = 'Spend one VesselAPI request on the current view (free tier ≈150/month, view must be ≤4°)';
+    check.textContent = 'Check VesselAPI here';
+    check.style.cssText = 'padding:1px 6px;border-radius:2px;border:1px solid rgba(255,170,50,0.6);background:rgba(255,170,50,0.12);color:#ffcc66;font:inherit;cursor:pointer;';
+    check.addEventListener('click', async () => {
+      if (!this.shipFeed) return;
+      check.disabled = true;
+      text.textContent = 'VesselAPI: querying…';
+      const result = await this.shipFeed.checkVesselApi();
+      check.disabled = false;
+      text.textContent = result.message;
+      if (result.ok) this.onShipUpdate(this.shipFeed.getContacts(), { ...this.shipFeed.getStatus(), message: result.message });
+    });
+    el.append(text, check);
+    this.container.appendChild(el);
+    this.shipStatusEl = el;
+  }
+
+  private renderShipStatus(status: ShipFeedStatus): void {
+    const text = this.shipStatusEl?.querySelector('.cesium-ship-status__text');
+    if (!text) return;
+    const tracked = this.trackedShipMmsi ? ` · tracking ${this.shipFeed?.getContact(this.trackedShipMmsi)?.name || this.trackedShipMmsi}${this.followShip ? ' (following)' : ''}` : '';
+    text.textContent = `Ship traffic: ${status.message || status.state} · ${status.contacts} held${tracked}`;
+  }
+
+  // Click-to-track: a compact card (not the shared MapPopup, which has no ship
+  // type) with Track / Follow / Stop. The trail is the session-local history the
+  // feed accumulates per MMSI, drawn as a ground-clamped polyline.
+  private showShipCard(mmsi: string, position: { x: number; y: number }): void {
+    this.hideTooltip();
+    this.hideShipCard();
+    const el = document.createElement('div');
+    el.className = 'cesium-ship-card';
+    el.style.cssText = 'position:absolute;z-index:1000;min-width:220px;max-width:300px;padding:8px 10px;border-radius:3px;background:rgba(10,12,16,0.96);border:1px solid rgba(60,120,60,0.6);color:#d4d4d4;font-family:var(--font-mono, monospace);font-size:11px;line-height:1.45;pointer-events:auto;';
+    el.style.left = `${Math.max(0, position.x + 12)}px`;
+    el.style.top = `${Math.max(0, position.y - 12)}px`;
+    el.addEventListener('click', (event) => {
+      const target = event.target as HTMLElement;
+      const action = target.dataset.shipAction;
+      if (!action) return;
+      event.stopPropagation();
+      if (action === 'track') { this.trackedShipMmsi = mmsi; this.followShip = false; }
+      else if (action === 'follow') { this.trackedShipMmsi = mmsi; this.followShip = !this.followShip; if (this.followShip) this.centerOnShip(mmsi); }
+      else if (action === 'stop') { this.trackedShipMmsi = null; this.followShip = false; }
+      else if (action === 'close') { this.hideShipCard(); return; }
+      this.renderShipTrack();
+      this.refreshShipCard();
+      if (this.shipFeed) this.renderShipStatus(this.shipFeed.getStatus());
+    });
+    this.container.appendChild(el);
+    this.shipCardEl = el;
+    this.shipCardMmsi = mmsi;
+    this.refreshShipCard();
+  }
+
+  private refreshShipCard(): void {
+    const el = this.shipCardEl;
+    const mmsi = this.shipCardMmsi;
+    if (!el || !mmsi) return;
+    const c = this.shipFeed?.getContact(mmsi);
+    const track = this.shipFeed?.getTrack(mmsi) ?? [];
+    const tracked = this.trackedShipMmsi === mmsi;
+    el.replaceChildren();
+    const line = (text: string, style = '') => { const d = document.createElement('div'); d.textContent = text; if (style) d.style.cssText = style; el.appendChild(d); };
+    if (!c) { line(`MMSI ${mmsi}`, 'font-weight:700'); line('Contact aged out of the feed.'); }
+    else {
+      line(c.name || `MMSI ${c.mmsi}`, 'font-weight:700;color:#e8f0e8;');
+      line(shipContactTitle(c).split(' · ').slice(1).join(' · '));
+      line(`MMSI ${c.mmsi}${c.imo ? ` · IMO ${c.imo}` : ''} · ${c.lat.toFixed(4)}, ${c.lon.toFixed(4)}${c.heading !== null && c.heading !== 511 ? ` · hdg ${Math.round(c.heading)}°` : ''}`, 'opacity:0.8');
+      line(`Trail: ${track.length} fix${track.length === 1 ? '' : 'es'} this session${tracked ? ' (drawn)' : ''}`, 'opacity:0.8');
+    }
+    const bar = document.createElement('div');
+    bar.style.cssText = 'display:flex;gap:6px;margin-top:6px;';
+    const btn = (label: string, action: string, active = false) => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.dataset.shipAction = action; b.textContent = label;
+      b.style.cssText = `padding:1px 7px;border-radius:2px;border:1px solid ${active ? 'rgba(120,220,120,0.9)' : 'rgba(60,120,60,0.6)'};background:${active ? 'rgba(60,160,60,0.3)' : 'rgba(30,50,30,0.5)'};color:#d4f0d4;font:inherit;cursor:pointer;`;
+      return b;
+    };
+    bar.append(btn('Track', 'track', tracked && !this.followShip), btn('Follow', 'follow', tracked && this.followShip), btn('Stop', 'stop'), btn('×', 'close'));
+    el.appendChild(bar);
+  }
+
+  private hideShipCard(): void {
+    this.shipCardEl?.remove();
+    this.shipCardEl = null;
+    this.shipCardMmsi = null;
+  }
+
+  private renderShipTrack(): void {
+    const mmsi = this.trackedShipMmsi;
+    const track = mmsi ? this.shipFeed?.getTrack(mmsi) ?? [] : [];
+    if (!mmsi || track.length < 2) {
+      if (this.pathGroups.delete('shipTrack')) this.flushPaths();
+      if (mmsi && this.followShip) this.centerOnShip(mmsi);
+      return;
+    }
+    const contact = this.shipFeed?.getContact(mmsi);
+    this.setPaths('shipTrack', 'ais', [{
+      id: mmsi,
+      name: `${contact?.name || mmsi} trail`,
+      points: track.map((p) => [p.lon, p.lat]),
+      color: '#7cf0a0',
+      width: 2.5,
+      clampToGround: true,
+    }]);
+    if (this.followShip) this.centerOnShip(mmsi);
+  }
+
+  private centerOnShip(mmsi: string): void {
+    const c = this.shipFeed?.getContact(mmsi);
+    if (!c) return;
+    this.applyCenter(c.lat, c.lon, Math.max(this.state.zoom, 9));
   }
 
   // ─── Feed setters (MapContainer contract; names mirror GlobeMap) ──────────
@@ -1246,6 +1444,7 @@ export class CesiumMapAdapter {
     this.destroyed = true;
     if (this.flashTimer) clearTimeout(this.flashTimer);
     if (this.reselectTimer) clearTimeout(this.reselectTimer);
+    this.teardownShipFeed();
     this.chrome?.destroy();
     this.chrome = null;
     this.removeCameraChangedListener?.();

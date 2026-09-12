@@ -1,0 +1,64 @@
+{
+  "url": "http://127.0.0.1:4200/?cesiumSpike=1&lat=50.95&lon=1.45&zoom=7.5&layers=ais",
+  "startedAt": "2026-09-12T00:19:23.663Z",
+  "steps": [
+    {
+      "name": "pump-initial",
+      "renders": 62,
+      "tilesLoaded": true
+    },
+    {
+      "name": "ships-first",
+      "ships": 91,
+      "trails": 0,
+      "status": "Ship traffic: 91 in view · 91 held",
+      "checkButton": true,
+      "card": null,
+      "bounds": {
+        "swLat": 50.326409763456965,
+        "swLon": 0.2717438160811788,
+        "neLat": 51.56172216335256,
+        "neLon": 2.6282561851539774
+      }
+    },
+    {
+      "name": "click",
+      "clicked": {
+        "id": "m:ships:247529100",
+        "x": 432.60705181694277,
+        "y": 381.22166973049906,
+        "d": 18.79051710411993
+      }
+    },
+    {
+      "name": "card-open",
+      "card": "GINOSTRA MVessel · 15.1 kn · 30° · 2 min ago · AIS relayMMSI 247529100 · 50.9182, 1.4543 · hdg 36°Trail: 1 fix this sessionTrackFollowStop×"
+    },
+    {
+      "name": "track-pressed",
+      "tracked": true
+    },
+    {
+      "name": "trail",
+      "trails": 0,
+      "card": "GINOSTRA MVessel · 15.1 kn · 30° · 3 min ago · AIS relayMMSI 247529100 · 50.9182, 1.4543 · hdg 36°Trail: 1 fix this session (drawn)TrackFollowStop×",
+      "status": "Ship traffic: 116 in view · 116 held · tracking GINOSTRA M"
+    },
+    {
+      "name": "layer-off",
+      "ships": 0,
+      "trails": 0,
+      "chip": false
+    },
+    {
+      "name": "summary",
+      "pass": true,
+      "trailObserved": false,
+      "ships": 91,
+      "pageErrors": []
+    }
+  ],
+  "pass": true,
+  "pageErrors": [],
+  "trailObserved": false
+}
